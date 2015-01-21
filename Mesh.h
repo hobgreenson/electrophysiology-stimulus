@@ -1,0 +1,65 @@
+
+#ifndef MESH_H
+#define MESH_H
+
+#include <GLFW/glfw3.h>
+#include <cstring>
+#include <cstdlib>
+#include <cmath>
+#include <cstdio>
+#include <ctime>
+#include "Vertex2D.h"
+
+class Mesh
+{
+public:
+    Mesh(const char* vs_path, const char* fs_path, float aspect_ratio);
+    ~Mesh();
+
+    // buffer id's for this mesh
+    GLuint vertex_buffer_;
+    GLuint index_buffer_;
+    GLuint vao_;
+
+    // vertex and index data defining the mesh 
+    int num_vertices_;
+    int num_indices_;
+    Vertex2D* vertices_;
+    GLushort* indices_;
+
+    // this is uniform data to pass to shaders
+    GLfloat transform_matrix_[16];
+    GLfloat color_[4];
+
+    // in my experience, each mesh will want it's own GLSL program
+    const char* vertex_shader_path_;
+    const char* fragment_shader_path_;
+    GLuint* program_;
+    GLint* transform_matrix_location_;
+    GLint* color_location_;
+    
+    // functions create vertex and index data defining the mesh
+    void rect(float lower_x, float lower_y,
+              float upper_x, float upper_y);
+    void makeVerticesRect(float lower_x, float lower_y,
+                          float upper_x, float upper_y);
+    void makeIndicesRect();
+    
+    void circle(float radius);
+    void makeVerticesCircle(float radius);
+    void makeIndicesCircle();
+    
+    // functions to modify color, position, shape of mesh
+    void color(float R, float G, float B, float A);
+    void randColor(float A);
+    void randGrayScaleColor(float A);
+    void randBlueScaleColor(float A);
+    void translateX(float dx);
+    void translateY(float dy);
+    void scaleX(float da);
+    void scaleY(float da);
+    void scaleXY(float da);
+    void rotateZ(float dtheta);
+};
+    
+#endif
