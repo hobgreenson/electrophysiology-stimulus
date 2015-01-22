@@ -6,11 +6,11 @@ INCFLAGS = -I/usr/X11/include
 LDFLAGS = -framework OpenGL -framework Cocoa\
           -framework IOKit -framework CoreVideo \
           -L"/System/Library/Frameworks/OpenGL.framework/Libraries" \
-          -lGL -lGLU -lm -lglfw3
+          -lGL -lGLU -lm -lglfw3 -lserial
 #else
 #CFLAGS = -g -Wall -O3
 #INCFLAGS = -I. -I/tmp/usr/local/include 
-#LDFLAGS = -L. -L/tmp/usr/local/lib -lGLEW -lGL -lGLU -lglfw3 -lX11 -lXxf86vm -lXrandr -lpthread -lXi -lXinerama -lXcursor
+#LDFLAGS = -L. -L/tmp/usr/local/lib -lserial -lGLEW -lGL -lGLU -lglfw3 -lX11 -lXxf86vm -lXrandr -lpthread -lXi -lXinerama -lXcursor
 #endif
 
 all: game 

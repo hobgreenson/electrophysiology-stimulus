@@ -45,21 +45,26 @@ public:
                           float upper_x, float upper_y);
     void makeIndicesRect();
     
-    void circle(float radius);
-    void makeVerticesCircle(float radius);
+    void circle(float radius, float cx, float cy);
+    void makeVerticesCircle(float radius, float cx, float cy);
     void makeIndicesCircle();
     
-    // functions to modify color, position, shape of mesh
+    // simple functions to modify color, position, shape of mesh
     void color(float R, float G, float B, float A);
     void randColor(float A);
     void randGrayScaleColor(float A);
     void randBlueScaleColor(float A);
     void translateX(float dx);
     void translateY(float dy);
+    void translateZ(float dz);
     void scaleX(float da);
     void scaleY(float da);
     void scaleXY(float da);
     void rotateZ(float dtheta);
+    
+    // slightly more complex functions for trajectories
+    void updateXY(double vel_x, double vel_y, double dt);
+    
 };
     
 #endif

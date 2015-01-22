@@ -11,6 +11,7 @@
 #include "Vertex2D.h"
 #include "load_shader.h"
 #include "Mesh.h"
+#include <serial/serial.h>
 #include <cstdio>
 
 /************ callbacks ************************/
@@ -23,6 +24,16 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+}
+
+/******** serial port ******************/
+//const uint64_t g_kBaud = 4 * 115200; // baud rate
+//const uint8_t g_kMsg = 'a'; // this message triggers the camera/ephys
+//serial::Serial g_serial("/dev/ttyACM0", g_kBaud, serial::Timeout::simpleTimeout(1000));
+
+void triggerSerial()
+{
+    //g_serial.write(&g_kMsg, 1);
 }
 
 /************ rendering ************************/
@@ -46,7 +57,6 @@ void checkMyGL()
 
 void drawMesh(Mesh* mesh)
 {
-    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glBindVertexArray(mesh->vao_);
     glUseProgram(*(mesh->program_));
     glUniformMatrix4fv(*(mesh->transform_matrix_location_), 1, GL_FALSE,
@@ -128,7 +138,7 @@ int main(int argc, char** argv)
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-    
+    float screen_aspect_ratio = (float)mode->width / (float)mode->height;
     glfwMakeContextCurrent(window);
     
 #ifdef __APPLE__
@@ -142,37 +152,52 @@ int main(int argc, char** argv)
     
     glfwSetKeyCallback(window, key_callback);
     
-    float screen_aspect_ratio = (float)mode->width / (float)mode->height;
-    
-    Mesh prey("./boring.vert", "./boring.frag", screen_aspect_ratio);
-    prey.rect(-0.2, -0.2, 0.2, 0.2);
-    prey.randBlueScaleColor(1.0);
-    
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-     
-    bufferMesh(&prey);
-    initMeshShaders(&prey);
+    
+    /* NOTE TO SELF: rect(-0.405, -0.2, 0.405, 0.1); precisely covers the screen */
+    Mesh* background = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
+    background->rect(-0.405, -0.2, 0.405, 0.1);
+    background->color(0.2, 0.2, 0.2, 1.0);
+    background->translateZ(0.001); // so it is behind the prey
+    bufferMesh(background);
+    initMeshShaders(background);
+    
+    Mesh* prey = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
+    prey->circle(0.1, -0.405, -0.05);
+    prey->color(0.0, 0.0, 1.0, 1.0);
+    bufferMesh(prey);
+    initMeshShaders(prey);
     
     double prev_sec = glfwGetTime();
     double curr_sec;
     double dt;
+    double elapsed = 0;
+    double vel_x = 0.05;
+    double vel_y = 0;
     
-    while(!glfwWindowShouldClose(window))
+    while(elapsed < 10) //!glfwWindowShouldClose(window))
     {
         curr_sec = glfwGetTime();
         dt = curr_sec - prev_sec;
+        elapsed += dt;
         prev_sec = curr_sec;
         
-        drawMesh(&prey);
-        prey.randBlueScaleColor(1.0);
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+        
+        drawMesh(background);
+        drawMesh(prey);
+        prey->updateXY(vel_x, vel_y, dt);
         
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
     
+    delete prey;
+    delete background;
     glfwDestroyWindow(window);
     glfwTerminate();
+    //g_serial.close();
     return 0;
 }
 

@@ -82,6 +82,11 @@ void Mesh::translateY(float dy)
     transform_matrix_[13] += dy;
 }
 
+void Mesh::translateZ(float dz)
+{
+    transform_matrix_[14] += dz;
+}
+
 void Mesh::scaleX(float da)
 {
     transform_matrix_[0] *= da;
@@ -101,6 +106,13 @@ void Mesh::scaleXY(float da)
 void Mesh::rotateZ(float dtheta)
 {
     
+}
+
+/*********** trajectories **********************/
+void Mesh::updateXY(double vel_x, double vel_y, double dt)
+{
+    translateX(vel_x * dt);
+    translateY(vel_y * dt);
 }
 
 /********* RECTANGLE ********************************/
@@ -148,13 +160,13 @@ void Mesh::makeIndicesRect()
 }
 
 /********* CIRCLE ********************************/
-void Mesh::circle(float radius)
+void Mesh::circle(float radius, float cx, float cy)
 {
-    makeVerticesCircle(radius);
+    makeVerticesCircle(radius, cx, cy);
     makeIndicesCircle();
 }
 
-void Mesh::makeVerticesCircle(float radius)
+void Mesh::makeVerticesCircle(float radius, float cx, float cy)
 {
     /* by default we make 10 degree steps and
      this makes a fairly hi-res circle.
@@ -170,8 +182,8 @@ void Mesh::makeVerticesCircle(float radius)
     GLfloat x, y;
     for (int i = 0; i < num_vertices_; ++i)
     {
-        x = radius * cos(i * M_PI * da / 180.0);
-        y = radius * sin(i * M_PI * da / 180.0);
+        x = cx + radius * cos(i * M_PI * da / 180.0);
+        y = cy + radius * sin(i * M_PI * da / 180.0);
         vertices_[i].position[0] = x;
         vertices_[i].position[1] = y;
     }
