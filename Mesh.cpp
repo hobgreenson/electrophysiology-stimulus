@@ -1,7 +1,9 @@
 #include "Mesh.h"
 
 Mesh::Mesh(const char* vs_path, const char* fs_path, float aspect_ratio)
-    : vertex_shader_path_(vs_path), fragment_shader_path_(fs_path)
+    : aspect_ratio_(aspect_ratio),
+      vertex_shader_path_(vs_path),
+      fragment_shader_path_(fs_path)
 {
     srand(time(NULL));
     
@@ -9,7 +11,7 @@ Mesh::Mesh(const char* vs_path, const char* fs_path, float aspect_ratio)
     GLfloat matrix[16] = 
     {
         1.0, 0.0, 0.0, 0.0,
-        0.0, aspect_ratio, 0.0, 0.0,
+        0.0, aspect_ratio_, 0.0, 0.0,
         0.0, 0.0, 1.0, 0.0,
         0.0, 0.0, 0.0, 1.0
     };
@@ -87,6 +89,12 @@ void Mesh::translateZ(float dz)
     transform_matrix_[14] += dz;
 }
 
+void Mesh::centerXY(float x, float y)
+{
+    transform_matrix_[12] = x;
+    transform_matrix_[13] = y;
+}
+
 void Mesh::scaleX(float da)
 {
     transform_matrix_[0] *= da;
@@ -103,16 +111,15 @@ void Mesh::scaleXY(float da)
     scaleY(da);
 }
 
+void Mesh::resetScale()
+{
+    transform_matrix_[0] = 1.0;
+    transform_matrix_[5] = aspect_ratio_;
+}
+
 void Mesh::rotateZ(float dtheta)
 {
     
-}
-
-/*********** trajectories **********************/
-void Mesh::updateXY(double vel_x, double vel_y, double dt)
-{
-    translateX(vel_x * dt);
-    translateY(vel_y * dt);
 }
 
 /********* RECTANGLE ********************************/

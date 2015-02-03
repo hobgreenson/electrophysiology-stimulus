@@ -14,13 +14,15 @@ LDFLAGS = -framework OpenGL -framework Cocoa\
 #endif
 
 all: game 
-game: main.o load_shader.o load_shader.h Vertex2D.h Mesh.o Mesh.h    
-	$(CC) $(CFLAGS) -o game main.o load_shader.o Mesh.o $(LDFLAGS) $(INCFLAGS)
-main.o: main.cpp load_shader.h Mesh.h Vertex2D.h 
+game: main.o load_shader.o load_shader.h Vertex2D.h Mesh.o Mesh.h Protocol.h Protocol.o    
+	$(CC) $(CFLAGS) -o game main.o load_shader.o Mesh.o Protocol.o $(LDFLAGS) $(INCFLAGS)
+main.o: main.cpp load_shader.h Mesh.h Vertex2D.h Protocol.h
 	$(CC) $(CFLAGS) $(INCFLAGS) -c main.cpp
 load_shader.o: load_shader.cpp load_shader.h
 	$(CC) $(CFLAGS) $(INCFLAGS) -c load_shader.cpp
 Mesh.o: Mesh.cpp Mesh.h Vertex2D.h 
 	$(CC) $(CFLAGS) $(INCFLAGS) -c Mesh.cpp
+Protocol.o: Protocol.cpp Protocol.h  
+	$(CC) $(CFLAGS) $(INCFLAGS) -c Protocol.cpp
 
 

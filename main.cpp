@@ -11,10 +11,15 @@
 #include "Vertex2D.h"
 #include "load_shader.h"
 #include "Mesh.h"
+#include "Protocol.h"
 #include <serial/serial.h>
 #include <cstdio>
 
+#define SCREEN_WIDTH_GL 0.68
+#define SCREEN_EDGE_GL -0.34
+
 /************ callbacks ************************/
+
 static void error_callback(int error, const char* description)
 {
     fputs(description, stderr);
@@ -27,9 +32,11 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 }
 
 /******** serial port ******************/
+
 //const uint64_t g_kBaud = 4 * 115200; // baud rate
 //const uint8_t g_kMsg = 'a'; // this message triggers the camera/ephys
-//serial::Serial g_serial("/dev/ttyACM0", g_kBaud, serial::Timeout::simpleTimeout(1000));
+//serial::Serial g_serial("/dev/tty.usbmodem1411", g_kBaud, serial::Timeout::simpleTimeout(1000));
+bool g_serial_up = false;
 
 void triggerSerial()
 {
@@ -37,6 +44,7 @@ void triggerSerial()
 }
 
 /************ rendering ************************/
+
 enum ATTRIBUTE_ID
 {
     VERTEX_POSITION,
@@ -113,9 +121,78 @@ void bufferMesh(Mesh* mesh)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+/************ logic *****************************/
+
+void initExperiment(bool* not_done, Mesh* mesh, Protocol* protocol, float* vel_x,
+                    double* elapsed_in_trial, double* trial_duration)
+{
+    *not_done = true;
+    *vel_x = protocol->nextSpeed();
+    float scale_r = protocol->nextSize();
+    *trial_duration = SCREEN_WIDTH_GL / (*vel_x);
+    *elapsed_in_trial = 0;
+    mesh->resetScale();
+    mesh->scaleXY(scale_r);
+    mesh->centerXY(SCREEN_EDGE_GL, -0.02);
+    if (!g_serial_up)
+    {
+        triggerSerial();
+        g_serial_up = !g_serial_up;
+    }
+}
+
+void updateExperiment(bool* not_done, Mesh* mesh, Protocol* protocol, float* vel_x,
+                      double* elapsed_in_trial, double* trial_duration, double dt)
+{
+    double T = *trial_duration;
+    double t = *elapsed_in_trial;
+    
+    if (t <= T)
+    {
+        mesh->translateX((*vel_x) * dt);
+        *elapsed_in_trial += dt;
+    }
+    else if (t <= T + 1)
+    {
+        *elapsed_in_trial += dt;
+        mesh->centerXY(2, -0.02);
+        if (g_serial_up)
+        {
+            triggerSerial();
+            g_serial_up = !g_serial_up;
+        }
+    }
+    else
+    {
+        *vel_x = protocol->nextSpeed();
+        float scale_r = protocol->nextSize();
+        if ((*vel_x) < 0 || scale_r < 0)
+        {
+            *not_done = false;
+        }
+        else
+        {
+            *trial_duration = SCREEN_WIDTH_GL / (*vel_x);
+            *elapsed_in_trial = 0;
+            mesh->resetScale();
+            mesh->scaleXY(scale_r);
+            mesh->centerXY(SCREEN_EDGE_GL, -0.02);
+        }
+        if (!g_serial_up)
+        {
+            triggerSerial();
+            g_serial_up = !g_serial_up;
+        }
+    }
+    
+}
+
 /************ main ************************/
+
 int main(int argc, char** argv)
 {
+    Protocol* protocol = new Protocol(argv[1]);
+    
     GLFWwindow* window;
     glfwSetErrorCallback(error_callback);
     
@@ -155,46 +232,63 @@ int main(int argc, char** argv)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     
-    /* NOTE TO SELF: rect(-0.405, -0.2, 0.405, 0.1); precisely covers the screen */
+    /* NOTE TO SELF: 
+     1. rect(-0.34, -0.16, 0.34, 0.09); precisely covers the screen 
+     2. when the fish 10 mm away from the screen, the screen covers 203 
+        degrees of visual space
+     */
     Mesh* background = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
-    background->rect(-0.405, -0.2, 0.405, 0.1);
-    background->color(0.2, 0.2, 0.2, 1.0);
+    background->rect(-0.34, -0.16, 0.34, 0.09);
+    background->color(0.0, 0.0, 0.5, 1.0);
     background->translateZ(0.001); // so it is behind the prey
     bufferMesh(background);
     initMeshShaders(background);
     
     Mesh* prey = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
-    prey->circle(0.1, -0.405, -0.05);
+    prey->circle(1, 0, 0);
     prey->color(0.0, 0.0, 1.0, 1.0);
     bufferMesh(prey);
     initMeshShaders(prey);
     
+    bool not_done;
+    float vel_x;
+    double elapsed_in_trial;
+    double trial_duration;
+    double total_elasped = 0;
+    
+    initExperiment(&not_done, prey, protocol, &vel_x,
+                   &elapsed_in_trial, &trial_duration);
+    
     double prev_sec = glfwGetTime();
     double curr_sec;
     double dt;
-    double elapsed = 0;
-    double vel_x = 0.05;
-    double vel_y = 0;
-    
-    while(elapsed < 10) //!glfwWindowShouldClose(window))
+    while(not_done && !glfwWindowShouldClose(window))
     {
         curr_sec = glfwGetTime();
         dt = curr_sec - prev_sec;
-        elapsed += dt;
         prev_sec = curr_sec;
+        total_elasped += dt;
         
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         drawMesh(background);
-        drawMesh(prey);
-        prey->updateXY(vel_x, vel_y, dt);
+        
+        if (total_elasped > 0)
+        {
+            drawMesh(prey);
+            updateExperiment(&not_done, prey, protocol, &vel_x,
+                             &elapsed_in_trial, &trial_duration, dt);
+        }
         
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
     
+    printf("experiment took %f seconds\n", total_elasped);
+    
     delete prey;
     delete background;
+    delete protocol;
     glfwDestroyWindow(window);
     glfwTerminate();
     //g_serial.close();

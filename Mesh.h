@@ -15,7 +15,9 @@ class Mesh
 public:
     Mesh(const char* vs_path, const char* fs_path, float aspect_ratio);
     ~Mesh();
-
+    
+    float aspect_ratio_;
+    
     // buffer id's for this mesh
     GLuint vertex_buffer_;
     GLuint index_buffer_;
@@ -57,13 +59,12 @@ public:
     void translateX(float dx);
     void translateY(float dy);
     void translateZ(float dz);
+    void centerXY(float x, float y);
     void scaleX(float da);
     void scaleY(float da);
     void scaleXY(float da);
+    void resetScale();
     void rotateZ(float dtheta);
-    
-    // slightly more complex functions for trajectories
-    void updateXY(double vel_x, double vel_y, double dt);
     
 };
     
