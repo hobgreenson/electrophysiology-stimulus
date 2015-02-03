@@ -11,12 +11,11 @@
 #include "Vertex2D.h"
 #include "load_shader.h"
 #include "Mesh.h"
-#include "Protocol.h"
-#include <serial/serial.h>
+#include "Experiment.h"
 #include <cstdio>
 
-#define SCREEN_WIDTH_GL 0.68
-#define SCREEN_EDGE_GL -0.34
+#define DRIFTING_GRATING 0
+#define PREY 1
 
 /************ callbacks ************************/
 
@@ -29,18 +28,6 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
-}
-
-/******** serial port ******************/
-
-//const uint64_t g_kBaud = 4 * 115200; // baud rate
-//const uint8_t g_kMsg = 'a'; // this message triggers the camera/ephys
-//serial::Serial g_serial("/dev/tty.usbmodem1411", g_kBaud, serial::Timeout::simpleTimeout(1000));
-bool g_serial_up = false;
-
-void triggerSerial()
-{
-    //g_serial.write(&g_kMsg, 1);
 }
 
 /************ rendering ************************/
@@ -121,78 +108,10 @@ void bufferMesh(Mesh* mesh)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-/************ logic *****************************/
-
-void initExperiment(bool* not_done, Mesh* mesh, Protocol* protocol, float* vel_x,
-                    double* elapsed_in_trial, double* trial_duration)
-{
-    *not_done = true;
-    *vel_x = protocol->nextSpeed();
-    float scale_r = protocol->nextSize();
-    *trial_duration = SCREEN_WIDTH_GL / (*vel_x);
-    *elapsed_in_trial = 0;
-    mesh->resetScale();
-    mesh->scaleXY(scale_r);
-    mesh->centerXY(SCREEN_EDGE_GL, -0.02);
-    if (!g_serial_up)
-    {
-        triggerSerial();
-        g_serial_up = !g_serial_up;
-    }
-}
-
-void updateExperiment(bool* not_done, Mesh* mesh, Protocol* protocol, float* vel_x,
-                      double* elapsed_in_trial, double* trial_duration, double dt)
-{
-    double T = *trial_duration;
-    double t = *elapsed_in_trial;
-    
-    if (t <= T)
-    {
-        mesh->translateX((*vel_x) * dt);
-        *elapsed_in_trial += dt;
-    }
-    else if (t <= T + 1)
-    {
-        *elapsed_in_trial += dt;
-        mesh->centerXY(2, -0.02);
-        if (g_serial_up)
-        {
-            triggerSerial();
-            g_serial_up = !g_serial_up;
-        }
-    }
-    else
-    {
-        *vel_x = protocol->nextSpeed();
-        float scale_r = protocol->nextSize();
-        if ((*vel_x) < 0 || scale_r < 0)
-        {
-            *not_done = false;
-        }
-        else
-        {
-            *trial_duration = SCREEN_WIDTH_GL / (*vel_x);
-            *elapsed_in_trial = 0;
-            mesh->resetScale();
-            mesh->scaleXY(scale_r);
-            mesh->centerXY(SCREEN_EDGE_GL, -0.02);
-        }
-        if (!g_serial_up)
-        {
-            triggerSerial();
-            g_serial_up = !g_serial_up;
-        }
-    }
-    
-}
-
 /************ main ************************/
 
 int main(int argc, char** argv)
 {
-    Protocol* protocol = new Protocol(argv[1]);
-    
     GLFWwindow* window;
     glfwSetErrorCallback(error_callback);
     
@@ -232,11 +151,8 @@ int main(int argc, char** argv)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     
-    /* NOTE TO SELF: 
-     1. rect(-0.34, -0.16, 0.34, 0.09); precisely covers the screen 
-     2. when the fish 10 mm away from the screen, the screen covers 203 
-        degrees of visual space
-     */
+    /* This sets up the prey experiment */
+    
     Mesh* background = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
     background->rect(-0.34, -0.16, 0.34, 0.09);
     background->color(0.0, 0.0, 0.5, 1.0);
@@ -250,19 +166,17 @@ int main(int argc, char** argv)
     bufferMesh(prey);
     initMeshShaders(prey);
     
-    bool not_done;
-    float vel_x;
-    double elapsed_in_trial;
-    double trial_duration;
+    Experiment* experiment = new Experiment(PREY, argv[1], prey);
+    
+    
+    /* game loop */
+    
     double total_elasped = 0;
-    
-    initExperiment(&not_done, prey, protocol, &vel_x,
-                   &elapsed_in_trial, &trial_duration);
-    
     double prev_sec = glfwGetTime();
     double curr_sec;
     double dt;
-    while(not_done && !glfwWindowShouldClose(window))
+    
+    while(experiment->not_done_ && !glfwWindowShouldClose(window))
     {
         curr_sec = glfwGetTime();
         dt = curr_sec - prev_sec;
@@ -276,8 +190,7 @@ int main(int argc, char** argv)
         if (total_elasped > 0)
         {
             drawMesh(prey);
-            updateExperiment(&not_done, prey, protocol, &vel_x,
-                             &elapsed_in_trial, &trial_duration, dt);
+            experiment->update(dt);
         }
         
         glfwSwapBuffers(window);
@@ -288,10 +201,9 @@ int main(int argc, char** argv)
     
     delete prey;
     delete background;
-    delete protocol;
+    delete experiment;
     glfwDestroyWindow(window);
     glfwTerminate();
-    //g_serial.close();
     return 0;
 }
 
