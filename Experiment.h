@@ -14,6 +14,7 @@ class Experiment
 {
 public:
     Experiment(int type, char* path, Mesh* mesh);
+    Experiment(int type, char* path, Mesh* mesh1, Mesh* mesh2);
     ~Experiment();
     void update(double dt);
     void triggerSerial();
@@ -23,6 +24,8 @@ public:
     
     Protocol* p_;
     Mesh* mesh_;
+    Mesh* mesh1_;
+    Mesh* mesh2_;
     serial::Serial* serial_chan_;
     
     bool serial_up_;

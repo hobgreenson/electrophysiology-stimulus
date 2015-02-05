@@ -267,7 +267,7 @@ void Mesh::makeLinearGratingVertices(int periods)
     int num_squares = 3 * 2 * periods;
     num_vertices_ = 2 * 4 * num_squares;
     
-    vertices_ = (vertex2D*) malloc(num_vertices_ * sizeof(vertex2D));
+    vertices_ = (Vertex2D*) malloc(num_vertices_ * sizeof(Vertex2D));
     
     float w_step;
     int N;
@@ -293,7 +293,7 @@ void Mesh::makeLinearGratingVertices(int periods)
             vertices_[vi + 1].position[0] = -3 + i * w_step;
             vertices_[vi + 1].position[1] = 1;
             
-            if (periods_ == 0)
+            if (periods == 0)
                 color = white;
             else
                 color = (i == 0) ? white : black;
@@ -309,7 +309,7 @@ void Mesh::makeLinearGratingVertices(int periods)
         else
         {
             for (int ii = 0; ii < 4; ++ii)
-                vertices[vi + ii].position[0] = -3 + i * w_step;
+                vertices_[vi + ii].position[0] = -3 + i * w_step;
             
             vertices_[vi + 0].position[1] = -1;
             vertices_[vi + 1].position[1] = 1;
@@ -335,7 +335,7 @@ void Mesh::makeLinearGratingVertices(int periods)
     }
     
     int ii = vi - 1, jj = vi;
-    vertex2D my_v;
+    Vertex2D my_v;
     while (ii >= 0)
     {
         my_v = vertices_[ii--];
@@ -397,7 +397,7 @@ void Mesh::makeRotatingGratingVertices(int periods)
     num_vertices_ =  4 * num_squares;
     
     // allocate an array of vertex structs
-    vertices_ = (vertex2D*) malloc(num_vertices_ * sizeof(vertex2D));
+    vertices_ = (Vertex2D*) malloc(num_vertices_ * sizeof(Vertex2D));
     
     // set step size along x-axis
     float x_step;

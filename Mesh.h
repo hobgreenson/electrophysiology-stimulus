@@ -9,7 +9,6 @@
 #include <cstdio>
 #include <ctime>
 #include "Vertex2D.h"
-#include "Vertex2Dcolor.h"
 
 class Mesh
 {

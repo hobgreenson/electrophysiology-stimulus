@@ -19,6 +19,7 @@ void main()
     
     vec4 p = transform_matrix * vec4(w, 0, 1);
     
+    float r = transform_matrix[0][0];    
     if (p.x > 0 && p.x < r)
         p.x = sign * sqrt(r * r - p.x * p.x);
     else if (p.x >= r)
