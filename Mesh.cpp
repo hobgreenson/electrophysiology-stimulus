@@ -28,49 +28,84 @@ Mesh::~Mesh()
 /*********** Color ********************************/
 void Mesh::color(float R, float G, float B, float A)
 {
-    color_[0] = R;
-    color_[1] = G;
-    color_[2] = B;
-    color_[3] = A;
+    GLubyte color[4];
+    color[0] = R;
+    color[1] = G;
+    color[2] = B;
+    color[3] = A;
+    
+    for (int i = 0; i < num_vertices_; ++i)
+    {
+        vertices_[i].color[0] = color[0];
+        vertices_[i].color[1] = color[1];
+        vertices_[i].color[2] = color[2];
+        vertices_[i].color[3] = color[3];
+    }
 }
 
 void Mesh::randColor(float A)
 {
+    GLubyte color[4];
+    
     int r = rand() % 10;
     float R = r / 10.0;
-    color_[0] = R;
+    color[0] = R;
     
     int g = rand() % 10;
     float G = g / 10.0;
-    color_[1] = G;
+    color[1] = G;
     
     int b = rand() % 10;
     float B = b / 10.0;
-    color_[2] = B;
+    color[2] = B;
     
-    color_[3] = A;
+    color[3] = A;
+    
+    for (int i = 0; i < num_vertices_; ++i)
+    {
+        vertices_[i].color[0] = color[0];
+        vertices_[i].color[1] = color[1];
+        vertices_[i].color[2] = color[2];
+        vertices_[i].color[3] = color[3];
+    }
 }
 
 void Mesh::randGrayScaleColor(float A)
 {
     int i = rand() % 10;
     float L = i / 10.0;
+    GLubyte color[4];
+    color[0] = L;
+    color[1] = L;
+    color[2] = L;
+    color[3] = A;
     
-    color_[0] = L;
-    color_[1] = L;
-    color_[2] = L;
-    color_[3] = A;
+    for (int i = 0; i < num_vertices_; ++i)
+    {
+        vertices_[i].color[0] = color[0];
+        vertices_[i].color[1] = color[1];
+        vertices_[i].color[2] = color[2];
+        vertices_[i].color[3] = color[3];
+    }
 }
 
 void Mesh::randBlueScaleColor(float A)
 {
     int i = rand() % 10;
     float B = i / 10.0;
+    GLubyte color[4];
+    color[0] = 0;
+    color[1] = 0;
+    color[2] = B;
+    color[3] = A;
     
-    color_[0] = 0;
-    color_[1] = 0;
-    color_[2] = B;
-    color_[3] = A;
+    for (int i = 0; i < num_vertices_; ++i)
+    {
+        vertices_[i].color[0] = color[0];
+        vertices_[i].color[1] = color[1];
+        vertices_[i].color[2] = color[2];
+        vertices_[i].color[3] = color[3];
+    }
 }
 
 /******** Simple spatial transforms *******************************/
@@ -211,6 +246,248 @@ void Mesh::makeIndicesCircle()
     }
 }
 
+/******************** grating ****************************/
+
+void Mesh::linearGrating(int periods)
+{
+    makeLinearGratingVertices(periods);
+    makeLinearGratingIndices(periods);
+}
+
+void Mesh::makeLinearGratingVertices(int periods)
+{
+    /* this is a variation on the function "makeVertices()"
+     that allows for simulation of a linear grating presented
+     below the fish. The real magic happens in the vertex shader.
+     */
+    GLubyte white[4] = {150, 150, 150, 1};
+    GLubyte black[4] = {0, 0, 0, 1};
+    GLubyte* color;
+    
+    int num_squares = 3 * 2 * periods;
+    num_vertices_ = 2 * 4 * num_squares;
+    
+    vertices_ = (vertex2D*) malloc(num_vertices_ * sizeof(vertex2D));
+    
+    float w_step;
+    int N;
+    if (periods == 0)
+    {
+        w_step = 6;
+        N = 1;
+    }
+    else
+    {
+        w_step = 1.0 / (float)periods;
+        N = 3 * 2 * periods;
+    }
+    
+    int vi = 0;
+    
+    for (int i = 0; i <= N; ++i)
+    {
+        if (i == 0 || i == N)
+        {
+            vertices_[vi + 0].position[0] = -3 + i * w_step;
+            vertices_[vi + 0].position[1] = -1;
+            vertices_[vi + 1].position[0] = -3 + i * w_step;
+            vertices_[vi + 1].position[1] = 1;
+            
+            if (periods_ == 0)
+                color = white;
+            else
+                color = (i == 0) ? white : black;
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 0].color[ii] = color[ii];
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 1].color[ii] = color[ii];
+            
+            vi += 2;
+        }
+        else
+        {
+            for (int ii = 0; ii < 4; ++ii)
+                vertices[vi + ii].position[0] = -3 + i * w_step;
+            
+            vertices_[vi + 0].position[1] = -1;
+            vertices_[vi + 1].position[1] = 1;
+            vertices_[vi + 2].position[1] = -1;
+            vertices_[vi + 3].position[1] = 1;
+            
+            color = i % 2 ? white : black;
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 0].color[ii] = color[ii];
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 1].color[ii] = color[ii];
+            
+            color = i % 2 ? black : white;
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 2].color[ii] = color[ii];
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 3].color[ii] = color[ii];
+            
+            vi += 4;
+        }
+    }
+    
+    int ii = vi - 1, jj = vi;
+    vertex2D my_v;
+    while (ii >= 0)
+    {
+        my_v = vertices_[ii--];
+        my_v.position[1] *= 2;
+        vertices_[jj++] = my_v;
+    }
+}
+
+void Mesh::makeLinearGratingIndices(int periods)
+{
+    int num_squares = 3 * 2 * periods;
+    num_indices_ = 2 * 6 * num_squares;
+    
+    indices_ = (GLushort*) malloc(num_indices_ * sizeof(GLushort));
+    
+    int vi = 0, ii = 0, N;
+    
+    N = (periods > 0) ? 3 * 2 * periods : 1;
+    
+    for (int i = 0; i < N; ++i)
+    {
+        indices_[ii + 0] = vi;
+        indices_[ii + 1] = vi + 2;
+        indices_[ii + 2] = vi + 3;
+        indices_[ii + 3] = vi;
+        indices_[ii + 4] = vi + 3;
+        indices_[ii + 5] = vi + 1;
+        vi += 4;
+        ii += 6;
+    }
+    
+    for (int i = N; i < 2 * N; ++i)
+    {
+        indices_[ii + 0] = vi;
+        indices_[ii + 1] = vi + 3;
+        indices_[ii + 2] = vi + 2;
+        indices_[ii + 3] = vi;
+        indices_[ii + 4] = vi + 1;
+        indices_[ii + 5] = vi + 3;
+        vi += 4;
+        ii += 6;
+    }
+}
+
+void Mesh::rotatingGrating(int periods)
+{
+    makeLinearGratingVertices(periods);
+    makeLinearGratingIndices(periods);
+}
+
+void Mesh::makeRotatingGratingVertices(int periods)
+{
+    // each stripe of the grating will have color black or white
+    GLubyte white[4] = {150, 150, 150, 1};
+    GLubyte black[4] = {0, 0, 0, 1};
+    GLubyte* color;
+    
+    int num_squares = 3 * 2 * periods;
+    num_vertices_ =  4 * num_squares;
+    
+    // allocate an array of vertex structs
+    vertices_ = (vertex2D*) malloc(num_vertices_ * sizeof(vertex2D));
+    
+    // set step size along x-axis
+    float x_step;
+    int N;
+    if (periods == 0)
+    {
+        x_step = 6;
+        N = 1;
+    }
+    else
+    {
+        x_step = 1.0 / (float)periods;
+        N = 3 * 2 * periods;
+    }
+    
+    int vi = 0;
+    
+    for (int i = 0; i <= N; ++i)
+    {
+        if (i == 0 || i == N)
+        {
+            vertices_[vi + 0].position[0] = -3 + i * x_step;
+            vertices_[vi + 0].position[1] = -1;
+            vertices_[vi + 1].position[0] = -3 + i * x_step;
+            vertices_[vi + 1].position[1] = 1;
+            
+            if(periods == 0)
+                color = white;
+            else
+                color = (i == 0) ? white : black;
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 0].color[ii] = color[ii];
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 0].color[ii] = color[ii];
+            
+            vi += 2;
+        }
+        else
+        {
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + ii].position[0] = -3 + i * x_step;
+            
+            vertices_[vi + 0].position[1] = -1;
+            vertices_[vi + 1].position[1] = 1;
+            vertices_[vi + 2].position[1] = -1;
+            vertices_[vi + 3].position[1] = 1;
+            
+            color = (i % 2) ? white : black;
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 0].color[ii] = color[ii];
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 1].color[ii] = color[ii];
+            
+            color = (i % 2) ? black : white;
+            
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 2].color[ii] = color[ii];
+            for (int ii = 0; ii < 4; ++ii)
+                vertices_[vi + 3].color[ii] = color[ii];
+            
+            vi += 4;
+        }
+    }
+}
+
+void Mesh::makeRotatingGratingIndices(int periods)
+{
+    int num_squares = 3 * 2 * periods;
+    num_indices_ = 6 * num_squares;
+    
+    indices_ = (GLushort*) malloc(num_indices_ * sizeof(GLushort));
+    
+    int vi = 0, ii = 0, N;
+    
+    N = (periods > 0) ? 3 * 2 * periods : 1;
+    
+    for(int i = 0; i < N; i++)
+    {
+        indices_[ii + 0] = vi;
+        indices_[ii + 1] = vi + 2;
+        indices_[ii + 2] = vi + 3;
+        indices_[ii + 3] = vi;
+        indices_[ii + 4] = vi + 3;
+        indices_[ii + 5] = vi + 1;
+        vi += 4;
+        ii += 6;
+    }
+}
 
 
 

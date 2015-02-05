@@ -56,7 +56,6 @@ void drawMesh(Mesh* mesh)
     glUseProgram(*(mesh->program_));
     glUniformMatrix4fv(*(mesh->transform_matrix_location_), 1, GL_FALSE,
                        mesh->transform_matrix_);
-    glUniform4fv(*(mesh->color_location_), 1, mesh->color_);
     glDrawElements(GL_TRIANGLES, mesh->num_indices_,
                    GL_UNSIGNED_SHORT, (const GLvoid*) 0);
     glBindVertexArray(0);
@@ -72,9 +71,6 @@ void initMeshShaders(Mesh* mesh)
     
     GLint mat_loc = glGetUniformLocation(program, "transform_matrix");
     mesh->transform_matrix_location_ = &mat_loc;
-    
-    GLint color_loc = glGetUniformLocation(program, "color");
-    mesh->color_location_ = &color_loc;
 }
 
 void bufferMesh(Mesh* mesh)
@@ -103,6 +99,11 @@ void bufferMesh(Mesh* mesh)
                           sizeof(Vertex2D),
                           (const GLvoid*) offsetof(Vertex2D, position));
     
+    glEnableVertexAttribArray(VERTEX_COLOR);
+    glVertexAttribPointer(VERTEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_FALSE,
+                          sizeof(Vertex2D),
+                          (const GLvoid*) offsetof(Vertex2D, color));
+
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -152,7 +153,7 @@ int main(int argc, char** argv)
     glEnable(GL_CULL_FACE);
     
     /* This sets up the prey experiment */
-    
+    /*
     Mesh* background = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
     background->rect(-0.34, -0.16, 0.34, 0.09);
     background->color(0.0, 0.0, 0.5, 1.0);
@@ -167,7 +168,21 @@ int main(int argc, char** argv)
     initMeshShaders(prey);
     
     Experiment* experiment = new Experiment(PREY, argv[1], prey);
+    */
+
+    /* This sets up the drifting grating experiment */
     
+    Mesh* rotating = new Mesh("./rotating_grating.vert", "./boring.frag", 1);
+    rotating->rotatingGrating(8);
+    bufferMesh(rotating);
+    initMeshShaders(rotating);
+
+    Mesh* linear = new Mesh("./linear_grating.vert", "./boring.frag", 1);
+    linear->linearGrating(8);
+    bufferMesh(linear);
+    initMeshShaders(linear);
+
+    Experiment* experiment = new Experiment(DRIFTING_GRATING, argv[1], linear);
     
     /* game loop */
     
@@ -199,9 +214,13 @@ int main(int argc, char** argv)
     
     printf("experiment took %f seconds\n", total_elasped);
     
-    delete prey;
-    delete background;
+    //delete prey;
+    //delete background;
+    delete rotating;
+    delete linear;
+
     delete experiment;
+    
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

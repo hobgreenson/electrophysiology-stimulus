@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <ctime>
 #include "Vertex2D.h"
+#include "Vertex2Dcolor.h"
 
 class Mesh
 {
@@ -31,14 +32,12 @@ public:
 
     // this is uniform data to pass to shaders
     GLfloat transform_matrix_[16];
-    GLfloat color_[4];
 
     // in my experience, each mesh will want it's own GLSL program
     const char* vertex_shader_path_;
     const char* fragment_shader_path_;
     GLuint* program_;
     GLint* transform_matrix_location_;
-    GLint* color_location_;
     
     // functions create vertex and index data defining the mesh
     void rect(float lower_x, float lower_y,
@@ -50,6 +49,14 @@ public:
     void circle(float radius, float cx, float cy);
     void makeVerticesCircle(float radius, float cx, float cy);
     void makeIndicesCircle();
+    
+    void rotatingGrating(int periods);
+    void makeRotatingGratingVertices(int periods);
+    void makeRotatingGratingIndices(int periods);
+    
+    void linearGrating(int periods);
+    void makeLinearGratingVertices(int periods);
+    void makeLinearGratingIndices(int periods);
     
     // simple functions to modify color, position, shape of mesh
     void color(float R, float G, float B, float A);
