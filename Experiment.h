@@ -4,6 +4,7 @@
 #include "Protocol.h"
 #include "Mesh.h"
 #include <serial/serial.h>
+#include <cstdio>
 
 #define SCREEN_WIDTH_GL 0.68
 #define SCREEN_EDGE_GL -0.34

@@ -14,7 +14,7 @@ Experiment::Experiment(int type, char* path, Mesh* mesh)
     float scale_r = p_->nextSize();
     trial_duration_ = SCREEN_WIDTH_GL / curr_speed_;
     elapsed_in_trial_ = 0;
-            
+    
     mesh_->resetScale();
     mesh_->scaleXY(scale_r);
     mesh_->centerXY(SCREEN_EDGE_GL, -0.02);
@@ -27,18 +27,20 @@ Experiment::Experiment(int type, char* path, Mesh* mesh1, Mesh* mesh2)
 : type_(type), not_done_(true), mesh_(NULL), mesh1_(mesh1), mesh2_(mesh2), serial_up_(false)
 {
     /* this constructor works for the difting grating experiment type */
-    
+    printf("entered experiment constructor\n");
     p_ = new Protocol(path, type_);
     //serial_chan_ = new serial::Serial("/dev/tty.usbmodem1411", // port ID
     //                                  4 * 115200, // baud rate
     //                                  serial::Timeout::simpleTimeout(1000));
+    printf("made a new protocol\n");
     curr_speed_ = p_->nextSpeed();
-    curr_mode_ = p_->nextSize();
+    curr_mode_ = p_->nextMode();
     
     trial_duration_ = 10;
     elapsed_in_trial_ = 0;
     
     serial_up_ = false;
+    printf("finished grating experiment constructor\n");
 }
 
 
@@ -63,6 +65,7 @@ void Experiment::update(double dt)
             if (elapsed_in_trial_ <= trial_duration_) // trial is not done yet
             {
                 mesh_->translateX(curr_speed_ * dt);
+                printf("translated mesh_\n");
                 elapsed_in_trial_ += dt;
             }
             else if (elapsed_in_trial_ <= 2 * trial_duration_) // inter-trial period
@@ -96,6 +99,7 @@ void Experiment::update(double dt)
                     }
                 }
             }
+            break;
         }
         case DRIFTING_GRATING:
         {
@@ -134,9 +138,11 @@ void Experiment::update(double dt)
                         serial_up_ = !serial_up_;
                     }
                 }
-                
             }
+            break;
         }
+        default:
+            break;
     }
 }
 
