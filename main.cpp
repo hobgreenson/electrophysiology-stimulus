@@ -30,16 +30,17 @@ Mesh g_prey("./boring.vert", "./boring.frag");
 Mesh g_rotating("./rotating_grating.vert", "./boring.frag");
 Mesh g_linear("./linear_grating.vert", "./boring.frag");
 
-serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
-                      4 * 115200, // baud rate
-                      serial::Timeout::simpleTimeout(1000));
+//serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
+//                      4 * 115200, // baud rate
+//                      serial::Timeout::simpleTimeout(1000));
 const uint8_t g_msg = 'a';
 bool g_serial_up = false;
 
 double g_dt = 0;
 double g_elapsed_in_trial = 0;
-int g_curr_mode = 0;
-float g_curr_speed = 0;
+int g_curr_mode = -1;
+float g_curr_speed = -1;
+float g_curr_size = -1;
 double g_trial_duration = 0;
 bool g_not_done = true;
 
@@ -148,27 +149,27 @@ void update()
                 g_prey.centerXY(2, -0.02); // move mesh off-screen
                 if (g_serial_up)
                 {
-                    g_chan.write(&g_msg, 1);
+                    //g_chan.write(&g_msg, 1);
                     g_serial_up = !g_serial_up;
                 }
             }
             else // start a new trial
             {
                 g_curr_speed = g_prey_protocol.nextSpeed();
-                float scale_r = g_prey_protocol.nextSize();
+                g_curr_size = g_prey_protocol.nextSize();
                 
-                if (g_curr_speed < 0 || scale_r < 0) // end of protocol
+                if (g_curr_speed < 0 || g_curr_size < 0) // end of protocol
                     g_not_done = false;
                 else
                 {
                     g_trial_duration = SCREEN_WIDTH_GL / g_curr_speed;
                     g_elapsed_in_trial = 0;
                     g_prey.resetScale();
-                    g_prey.scaleXY(scale_r);
+                    g_prey.scaleXY(g_curr_size);
                     g_prey.centerXY(SCREEN_EDGE_GL, -0.02);
                     if (!g_serial_up)
                     {
-                        g_chan.write(&g_msg, 1);
+                        //g_chan.write(&g_msg, 1);
                         g_serial_up = !g_serial_up;
                     }
                 }
@@ -186,7 +187,7 @@ void update()
                 
                 if (!g_serial_up)
                 {
-                    g_chan.write(&g_msg, 1);
+                    //g_chan.write(&g_msg, 1);
                     g_serial_up = true;
                 }
             }
@@ -195,7 +196,7 @@ void update()
                 g_elapsed_in_trial += g_dt;
                 if (g_serial_up)
                 {
-                    g_chan.write(&g_msg, 1);
+                    //g_chan.write(&g_msg, 1);
                     g_serial_up = false;
                 }
             }
@@ -208,7 +209,7 @@ void update()
                 else
                 {
                     g_elapsed_in_trial = 0;
-                    g_chan.write(&g_msg, 1);
+                    //g_chan.write(&g_msg, 1);
                     g_serial_up = true;
                 }
             }
@@ -293,6 +294,8 @@ int main(int argc, char** argv)
     if (g_exp_type == PREY)
     {
         g_prey_protocol.save(argv[2]);
+        g_curr_speed = g_prey_protocol.nextSpeed();
+        g_curr_size = g_prey_protocol.nextSize();
     }
     else
     {
@@ -320,7 +323,7 @@ int main(int argc, char** argv)
         if (g_exp_type == PREY)
         {
             /* draws prey experiment */
-            drawMesh(&g_background);
+            //drawMesh(&g_background);
             drawMesh(&g_prey);
         }
         else
@@ -341,7 +344,7 @@ int main(int argc, char** argv)
     
     printf("experiment took %f seconds\n", total_elasped);
     
-    g_chan.close();
+    //g_chan.close();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
