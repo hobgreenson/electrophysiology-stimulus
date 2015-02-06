@@ -17,8 +17,8 @@ public:
     Experiment(int type, char* path, Mesh* mesh);
     Experiment(int type, char* path, Mesh* mesh1, Mesh* mesh2);
     ~Experiment();
-    void update(double dt);
-    void triggerSerial();
+    void update(double dt, serial::Serial* chan, const uint8_t* msg);
+    void triggerSerial(serial::Serial* chan, const uint8_t* msg);
 
     int type_;
     bool not_done_;

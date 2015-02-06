@@ -13,16 +13,16 @@
 class Protocol
 {
 public:
-    Protocol(char* path, int experiment_type);
+    Protocol(int experiment_type);
     ~Protocol();
     float nextSize();
     float nextSpeed();
     int nextMode();
     void reset();
     int experiment_type_;
+    void save(char* path);
     
 private:
-    char* save_path_;
     int* size_array_;
     int* speed_array_;
     int* mode_array_;
@@ -34,7 +34,6 @@ private:
     float sizeToGL(int size); 
     float speedToGL(int speed); 
     
-    void save();
     void shuffle();
     template <typename T> void swap(T* a, T* b);
 };

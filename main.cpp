@@ -8,14 +8,40 @@
 #include <GLFW/glfw3.h>
 #endif
 
+#include <serial/serial.h>
 #include "Vertex2D.h"
 #include "load_shader.h"
 #include "Mesh.h"
-#include "Experiment.h"
+#include "Protocol.h"
 #include <cstdio>
 
+#define SCREEN_WIDTH_GL 0.68
+#define SCREEN_EDGE_GL -0.34
 #define DRIFTING_GRATING 0
 #define PREY 1
+
+/************* globals ***********************/
+int g_exp_type;
+Protocol g_prey_protocol(PREY);
+Protocol g_drifting_protocol(DRIFTING_GRATING);
+
+Mesh g_background("./boring.vert", "./boring.frag");
+Mesh g_prey("./boring.vert", "./boring.frag");
+Mesh g_rotating("./rotating_grating.vert", "./boring.frag");
+Mesh g_linear("./linear_grating.vert", "./boring.frag");
+
+serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
+                      4 * 115200, // baud rate
+                      serial::Timeout::simpleTimeout(1000));
+const uint8_t g_msg = 'a';
+bool g_serial_up = false;
+
+double g_dt = 0;
+double g_elapsed_in_trial = 0;
+int g_curr_mode = 0;
+float g_curr_speed = 0;
+double g_trial_duration = 0;
+bool g_not_done = true;
 
 /************ callbacks ************************/
 
@@ -53,29 +79,23 @@ void checkMyGL()
 void drawMesh(Mesh* mesh)
 {
     glBindVertexArray(mesh->vao_);
-    glUseProgram(*(mesh->program_));
-    glUniformMatrix4fv(*(mesh->transform_matrix_location_), 1, GL_FALSE,
+    glUseProgram(mesh->program_);
+    glUniformMatrix4fv(mesh->transform_matrix_location_, 1, GL_FALSE,
                        mesh->transform_matrix_);
     glDrawElements(GL_TRIANGLES, mesh->num_indices_,
                    GL_UNSIGNED_SHORT, (const GLvoid*) 0);
-    glBindVertexArray(0);
 }
 
 void initMeshShaders(Mesh* mesh)
 {
-    // set up GLSL program for the mesh
     GLuint vs = initshaders(GL_VERTEX_SHADER, mesh->vertex_shader_path_);
     GLuint fs = initshaders(GL_FRAGMENT_SHADER, mesh->fragment_shader_path_);
-    GLuint program = initprogram(vs, fs);
-    mesh->program_ = &program;
-    
-    GLint mat_loc = glGetUniformLocation(program, "transform_matrix");
-    mesh->transform_matrix_location_ = &mat_loc;
+    initprogram(mesh, vs, fs);
+    mesh->transform_matrix_location_ = glGetUniformLocation(mesh->program_, "transform_matrix");
 }
 
 void bufferMesh(Mesh* mesh)
 {
-    // generate buffers and vertex array object for the mesh
     glGenBuffers(1, &(mesh->vertex_buffer_));
     glGenBuffers(1, &(mesh->index_buffer_));
     glGenVertexArrays(1, &(mesh->vao_));
@@ -109,6 +129,97 @@ void bufferMesh(Mesh* mesh)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+/*********** logic ************************/
+
+void update()
+{
+    switch (g_exp_type)
+    {
+        case PREY:
+        {
+            if (g_elapsed_in_trial <= g_trial_duration) // trial is not done yet
+            {
+                g_prey.translateX(g_curr_speed * g_dt);
+                g_elapsed_in_trial += g_dt;
+            }
+            else if (g_elapsed_in_trial <= 2 * g_trial_duration) // inter-trial period
+            {
+                g_elapsed_in_trial += g_dt;
+                g_prey.centerXY(2, -0.02); // move mesh off-screen
+                if (g_serial_up)
+                {
+                    g_chan.write(&g_msg, 1);
+                    g_serial_up = !g_serial_up;
+                }
+            }
+            else // start a new trial
+            {
+                g_curr_speed = g_prey_protocol.nextSpeed();
+                float scale_r = g_prey_protocol.nextSize();
+                
+                if (g_curr_speed < 0 || scale_r < 0) // end of protocol
+                    g_not_done = false;
+                else
+                {
+                    g_trial_duration = SCREEN_WIDTH_GL / g_curr_speed;
+                    g_elapsed_in_trial = 0;
+                    g_prey.resetScale();
+                    g_prey.scaleXY(scale_r);
+                    g_prey.centerXY(SCREEN_EDGE_GL, -0.02);
+                    if (!g_serial_up)
+                    {
+                        g_chan.write(&g_msg, 1);
+                        g_serial_up = !g_serial_up;
+                    }
+                }
+            }
+            break;
+        }
+        case DRIFTING_GRATING:
+        {
+            if (g_elapsed_in_trial <= g_trial_duration) // trial is not done yet
+            {
+                float coeff = g_curr_mode == 0 ? -1 : 1;
+                g_linear.translateX(coeff * g_curr_speed * g_dt);
+                g_rotating.translateX(coeff * g_curr_speed * g_dt);
+                g_elapsed_in_trial += g_dt;
+                
+                if (!g_serial_up)
+                {
+                    g_chan.write(&g_msg, 1);
+                    g_serial_up = true;
+                }
+            }
+            else if (g_elapsed_in_trial <= 2 * g_trial_duration) // inter-trial period
+            {
+                g_elapsed_in_trial += g_dt;
+                if (g_serial_up)
+                {
+                    g_chan.write(&g_msg, 1);
+                    g_serial_up = false;
+                }
+            }
+            else // start a new trial
+            {
+                g_curr_speed = g_drifting_protocol.nextSpeed();
+                g_curr_mode = g_drifting_protocol.nextMode();
+                if (g_curr_speed < 0 || g_curr_mode < 0) // end of protocol
+                    g_not_done = false;
+                else
+                {
+                    g_elapsed_in_trial = 0;
+                    g_chan.write(&g_msg, 1);
+                    g_serial_up = true;
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+
 /************ main ************************/
 
 int main(int argc, char** argv)
@@ -135,7 +246,7 @@ int main(int argc, char** argv)
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-    float screen_aspect_ratio = (float)mode->width / (float)mode->height;
+    //float screen_aspect_ratio = (float)mode->width / (float)mode->height;
     glfwMakeContextCurrent(window);
     
 #ifdef __APPLE__
@@ -153,83 +264,84 @@ int main(int argc, char** argv)
     glEnable(GL_CULL_FACE);
     
     /* This sets up the prey experiment */
-    Mesh* background = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
-    background->rect(-0.34, -0.16, 0.34, 0.09);
-    background->color(0.0, 0.0, 0.5, 1.0);
-    background->translateZ(0.001); // so it is behind the prey
-    bufferMesh(background);
-    initMeshShaders(background);
+    g_background.rect(-0.34, -0.16, 0.34, 0.09);
+    g_background.color(0, 0, 100, 255);
+    g_background.translateZ(0.001); // so it is behind the prey
+    bufferMesh(&g_background);
+    initMeshShaders(&g_background);
     
-    Mesh* prey = new Mesh("./boring.vert", "./boring.frag", screen_aspect_ratio);
-    prey->circle(1, 0, 0);
-    prey->color(0.0, 0.0, 1.0, 1.0);
-    bufferMesh(prey);
-    initMeshShaders(prey);
+    g_prey.circle(1, 0, 0);
+    g_prey.color(0.0, 0.0, 255, 255);
+    bufferMesh(&g_prey);
+    initMeshShaders(&g_prey);
     
-    Experiment* experiment = new Experiment(PREY, argv[1], prey);
-    
-
     /* This sets up the drifting grating experiment */
-    /*
-    Mesh* rotating = new Mesh("./rotating_grating.vert", "./boring.frag", 1);
-    rotating->rotatingGrating(8);
-    bufferMesh(rotating);
-    initMeshShaders(rotating);
-
-    Mesh* linear = new Mesh("./linear_grating.vert", "./boring.frag", 1);
-    linear->linearGrating(8);
-    bufferMesh(linear);
-    initMeshShaders(linear);
-
+    g_rotating.rotatingGrating(8);
+    g_rotating.scaleX(0.34);
+    g_rotating.scaleY(0.3);
+    bufferMesh(&g_rotating);
+    initMeshShaders(&g_rotating);
     
-    Experiment* experiment = new Experiment(DRIFTING_GRATING, argv[1], rotating, linear);
-    */
-    
+    g_linear.linearGrating(8);
+    g_linear.scaleX(0.34);
+    g_linear.scaleY(0.3);
+    bufferMesh(&g_linear);
+    initMeshShaders(&g_linear);
+   
+    /* choose an experiment */
+    g_exp_type = atoi(argv[1]);
+    if (g_exp_type == PREY)
+    {
+        g_prey_protocol.save(argv[2]);
+    }
+    else
+    {
+        g_drifting_protocol.save(argv[2]);
+        g_curr_speed = g_drifting_protocol.nextSpeed();
+        g_curr_mode = g_drifting_protocol.nextMode();
+        g_trial_duration = 1;
+    }
     
     /* game loop */
-    
     double total_elasped = 0;
     double prev_sec = glfwGetTime();
     double curr_sec;
-    double dt;
-    
-    while(experiment->not_done_ && !glfwWindowShouldClose(window))
+    while(g_not_done && !glfwWindowShouldClose(window))
     {
         curr_sec = glfwGetTime();
-        dt = curr_sec - prev_sec;
+        g_dt = curr_sec - prev_sec;
         prev_sec = curr_sec;
-        total_elasped += dt;
+        total_elasped += g_dt;
+        
+        //printf("g_dt = %f\n", g_dt);
         
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
-        drawMesh(background);
-        if (total_elasped > 0)
+        if (g_exp_type == PREY)
         {
-            drawMesh(prey);
-            experiment->update(dt);
+            /* draws prey experiment */
+            drawMesh(&g_background);
+            drawMesh(&g_prey);
         }
-        /*
-        if (experiment->curr_mode_ == 2)
-            drawMesh(linear);
         else
-            drawMesh(rotating);
+        {
+            /* draws dirfting grating experiment */
+            if (g_curr_mode == 2)
+                drawMesh(&g_linear);
+            else
+                drawMesh(&g_rotating);
+        }
+
+        if (total_elasped > 1) 
+            update();
         
-        if (total_elasped > 0)
-            experiment->update(dt);
-        */
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
     
     printf("experiment took %f seconds\n", total_elasped);
     
-    delete prey;
-    delete background;
-    //delete rotating;
-    //delete linear;
-
-    delete experiment;
-    
+    g_chan.close();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

@@ -1,8 +1,7 @@
 #include "Mesh.h"
 
-Mesh::Mesh(const char* vs_path, const char* fs_path, float aspect_ratio)
-    : aspect_ratio_(aspect_ratio),
-      vertex_shader_path_(vs_path),
+Mesh::Mesh(const char* vs_path, const char* fs_path)
+    : vertex_shader_path_(vs_path),
       fragment_shader_path_(fs_path)
 {
     srand(time(NULL));
@@ -11,7 +10,7 @@ Mesh::Mesh(const char* vs_path, const char* fs_path, float aspect_ratio)
     GLfloat matrix[16] = 
     {
         1.0, 0.0, 0.0, 0.0,
-        0.0, aspect_ratio_, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
         0.0, 0.0, 1.0, 0.0,
         0.0, 0.0, 0.0, 1.0
     };

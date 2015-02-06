@@ -1,8 +1,7 @@
 #include "Protocol.h"
 
-Protocol::Protocol(char* save_path, int experiment_type)
+Protocol::Protocol(int experiment_type)
     : experiment_type_(experiment_type),
-      save_path_(save_path),
       size_index_(0), speed_index_(0), mode_index_(0)
 {
     switch (experiment_type_)
@@ -14,7 +13,8 @@ Protocol::Protocol(char* save_path, int experiment_type)
             length_ = 150; // 5x reps for each speed-size combo
             size_array_ = (int*) malloc(length_ * sizeof(int));
             speed_array_ = (int*) malloc(length_ * sizeof(int));
-            
+            mode_array_ = (int*) malloc(length_ * sizeof(int));
+                        
             int arr_i = 0;
             for(int i = 0; i < 5; i++)
             {
@@ -40,7 +40,7 @@ Protocol::Protocol(char* save_path, int experiment_type)
             length_ = 3 * 8 * 5;
             mode_array_ = (int*) malloc(length_ * sizeof(int));
             speed_array_ = (int*) malloc(length_ * sizeof(int));
-            
+            size_array_ = (int*) malloc(length_ * sizeof(int)); 
             int arr_i = 0;
             for(int i = 0; i < 8; i++)
             {
@@ -64,18 +64,18 @@ Protocol::Protocol(char* save_path, int experiment_type)
             break;
     }
     shuffle();
-    save();
 }
 
 Protocol::~Protocol()
 {
     free(size_array_);
     free(speed_array_);
+    free(mode_array_);
 }
 
-void Protocol::save()
+void Protocol::save(char* save_path)
 {
-    FILE* file = fopen(save_path_, "w");
+    FILE* file = fopen(save_path, "w");
     
     switch (experiment_type_)
     {
@@ -152,5 +152,6 @@ void Protocol::shuffle()
         ri = (rand() % (length_ - i)) + i;
         swap(size_array_ + i, size_array_ + ri);
         swap(speed_array_ + i, speed_array_ + ri);
+        swap(mode_array_ + i, mode_array_ + ri);
     }
 }

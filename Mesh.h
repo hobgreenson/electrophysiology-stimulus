@@ -13,7 +13,7 @@
 class Mesh
 {
 public:
-    Mesh(const char* vs_path, const char* fs_path, float aspect_ratio);
+    Mesh(const char* vs_path, const char* fs_path);
     ~Mesh();
     
     float aspect_ratio_;
@@ -35,8 +35,8 @@ public:
     // in my experience, each mesh will want it's own GLSL program
     const char* vertex_shader_path_;
     const char* fragment_shader_path_;
-    GLuint* program_;
-    GLint* transform_matrix_location_;
+    GLuint program_;
+    GLint transform_matrix_location_;
     
     // functions create vertex and index data defining the mesh
     void rect(float lower_x, float lower_y,
