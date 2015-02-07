@@ -148,7 +148,7 @@ void Mesh::scaleXY(float da)
 void Mesh::resetScale()
 {
     transform_matrix_[0] = 1.0;
-    transform_matrix_[5] = aspect_ratio_;
+    transform_matrix_[5] = 1.0;
 }
 
 void Mesh::rotateZ(float dtheta)

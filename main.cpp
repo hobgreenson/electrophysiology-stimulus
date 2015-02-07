@@ -157,7 +157,6 @@ void update()
             {
                 g_curr_speed = g_prey_protocol.nextSpeed();
                 g_curr_size = g_prey_protocol.nextSize();
-                
                 if (g_curr_speed < 0 || g_curr_size < 0) // end of protocol
                     g_not_done = false;
                 else
@@ -296,6 +295,8 @@ int main(int argc, char** argv)
         g_prey_protocol.save(argv[2]);
         g_curr_speed = g_prey_protocol.nextSpeed();
         g_curr_size = g_prey_protocol.nextSize();
+        g_prey.scaleXY(g_curr_size);
+        g_prey.centerXY(SCREEN_EDGE_GL, -0.02);
     }
     else
     {
@@ -323,7 +324,7 @@ int main(int argc, char** argv)
         if (g_exp_type == PREY)
         {
             /* draws prey experiment */
-            //drawMesh(&g_background);
+            drawMesh(&g_background);
             drawMesh(&g_prey);
         }
         else
