@@ -113,6 +113,13 @@ void Mesh::translateX(float dx)
     transform_matrix_[12] += dx;
 }
 
+void Mesh::translateXmod(float dx, float n)
+{
+    transform_matrix_[12] += dx;
+    if(fabs(transform_matrix_[12]) > n)
+        transform_matrix_[12] = 0;
+}
+
 void Mesh::translateY(float dy)
 {
     transform_matrix_[13] += dy;

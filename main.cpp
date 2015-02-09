@@ -16,7 +16,7 @@
 #include <cstdio>
 
 #define SCREEN_WIDTH_GL 0.68
-#define SCREEN_EDGE_GL -0.34
+#define SCREEN_EDGE_GL 0.35
 #define DRIFTING_GRATING 0
 #define PREY 1
 
@@ -30,9 +30,9 @@ Mesh g_prey("./boring.vert", "./boring.frag");
 Mesh g_rotating("./rotating_grating.vert", "./boring.frag");
 Mesh g_linear("./linear_grating.vert", "./boring.frag");
 
-//serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
-//                      4 * 115200, // baud rate
-//                      serial::Timeout::simpleTimeout(1000));
+serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
+                      4 * 115200, // baud rate
+                      serial::Timeout::simpleTimeout(1000));
 const uint8_t g_msg = 'a';
 bool g_serial_up = false;
 
@@ -142,6 +142,11 @@ void update()
             {
                 g_prey.translateX(g_curr_speed * g_dt);
                 g_elapsed_in_trial += g_dt;
+                if (!g_serial_up)
+                {
+                    g_chan.write(&g_msg, 1);
+                    g_serial_up = true;
+                }
             }
             else if (g_elapsed_in_trial <= 2 * g_trial_duration) // inter-trial period
             {
@@ -149,7 +154,7 @@ void update()
                 g_prey.centerXY(2, -0.02); // move mesh off-screen
                 if (g_serial_up)
                 {
-                    //g_chan.write(&g_msg, 1);
+                    g_chan.write(&g_msg, 1);
                     g_serial_up = !g_serial_up;
                 }
             }
@@ -165,10 +170,10 @@ void update()
                     g_elapsed_in_trial = 0;
                     g_prey.resetScale();
                     g_prey.scaleXY(g_curr_size);
-                    g_prey.centerXY(SCREEN_EDGE_GL, -0.02);
+                    g_prey.centerXY(-SCREEN_EDGE_GL, -0.02);
                     if (!g_serial_up)
                     {
-                        //g_chan.write(&g_msg, 1);
+                        g_chan.write(&g_msg, 1);
                         g_serial_up = !g_serial_up;
                     }
                 }
@@ -180,13 +185,13 @@ void update()
             if (g_elapsed_in_trial <= g_trial_duration) // trial is not done yet
             {
                 float coeff = g_curr_mode == 0 ? -1 : 1;
-                g_linear.translateX(coeff * g_curr_speed * g_dt);
-                g_rotating.translateX(coeff * g_curr_speed * g_dt);
+                g_linear.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
+                g_rotating.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
                 g_elapsed_in_trial += g_dt;
                 
                 if (!g_serial_up)
                 {
-                    //g_chan.write(&g_msg, 1);
+                    g_chan.write(&g_msg, 1);
                     g_serial_up = true;
                 }
             }
@@ -195,7 +200,7 @@ void update()
                 g_elapsed_in_trial += g_dt;
                 if (g_serial_up)
                 {
-                    //g_chan.write(&g_msg, 1);
+                    g_chan.write(&g_msg, 1);
                     g_serial_up = false;
                 }
             }
@@ -208,7 +213,7 @@ void update()
                 else
                 {
                     g_elapsed_in_trial = 0;
-                    //g_chan.write(&g_msg, 1);
+                    g_chan.write(&g_msg, 1);
                     g_serial_up = true;
                 }
             }
@@ -264,7 +269,7 @@ int main(int argc, char** argv)
     glEnable(GL_CULL_FACE);
     
     /* This sets up the prey experiment */
-    g_background.rect(-0.34, -0.16, 0.34, 0.09);
+    g_background.rect(-SCREEN_EDGE_GL, -0.16, SCREEN_EDGE_GL, 0.09);
     g_background.color(0, 0, 100, 255);
     g_background.translateZ(0.001); // so it is behind the prey
     bufferMesh(&g_background);
@@ -277,13 +282,13 @@ int main(int argc, char** argv)
     
     /* This sets up the drifting grating experiment */
     g_rotating.rotatingGrating(8);
-    g_rotating.scaleX(0.34);
+    g_rotating.scaleX(SCREEN_EDGE_GL);
     g_rotating.scaleY(0.3);
     bufferMesh(&g_rotating);
     initMeshShaders(&g_rotating);
     
     g_linear.linearGrating(8);
-    g_linear.scaleX(0.34);
+    g_linear.scaleX(SCREEN_EDGE_GL);
     g_linear.scaleY(0.3);
     bufferMesh(&g_linear);
     initMeshShaders(&g_linear);
@@ -303,7 +308,7 @@ int main(int argc, char** argv)
         g_drifting_protocol.save(argv[2]);
         g_curr_speed = g_drifting_protocol.nextSpeed();
         g_curr_mode = g_drifting_protocol.nextMode();
-        g_trial_duration = 1;
+        g_trial_duration = 10;
     }
     
     /* game loop */
@@ -345,7 +350,7 @@ int main(int argc, char** argv)
     
     printf("experiment took %f seconds\n", total_elasped);
     
-    //g_chan.close();
+    g_chan.close();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

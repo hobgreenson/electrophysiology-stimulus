@@ -17,8 +17,12 @@ void main()
     {
         float frac = (p.x + r) / (2 * r);
         p.x = r * cos(-PI * (1 + frac));
+        color = vColor / 255;
+    }
+    else
+    {
+        color = vec4(0,0,0,0);
     }
 
     gl_Position = p;
-    color = vColor / 255;
 }

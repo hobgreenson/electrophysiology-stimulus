@@ -63,6 +63,7 @@ public:
     void randGrayScaleColor(float A);
     void randBlueScaleColor(float A);
     void translateX(float dx);
+    void translateXmod(float dx, float n);
     void translateY(float dy);
     void translateZ(float dz);
     void centerXY(float x, float y);
