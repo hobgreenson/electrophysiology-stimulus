@@ -1,4 +1,4 @@
-#ifdef __APPLE__
+ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/gl3.h>
 #include <OpenGL/glext.h>
@@ -33,6 +33,7 @@ Mesh g_linear("./linear_grating.vert", "./boring.frag");
 serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
                       4 * 115200, // baud rate
                       serial::Timeout::simpleTimeout(1000));
+
 const uint8_t g_msg = 'a';
 bool g_serial_up = false;
 
@@ -224,7 +225,6 @@ void update()
     }
 }
 
-
 /************ main ************************/
 
 int main(int argc, char** argv)
@@ -341,7 +341,7 @@ int main(int argc, char** argv)
                 drawMesh(&g_rotating);
         }
 
-        if (total_elasped > 1) 
+        if (total_elasped > 10) 
             update();
         
         glfwSwapBuffers(window);
