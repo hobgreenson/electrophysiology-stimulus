@@ -2,6 +2,7 @@
 #ifndef MESH_H
 #define MESH_H
 
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cstring>
 #include <cstdlib>
@@ -62,16 +63,16 @@ public:
     void randColor(float A);
     void randGrayScaleColor(float A);
     void randBlueScaleColor(float A);
-    void translateX(float dx);
-    void translateXmod(float dx, float n);
-    void translateY(float dy);
-    void translateZ(float dz);
-    void centerXY(float x, float y);
-    void scaleX(float da);
-    void scaleY(float da);
-    void scaleXY(float da);
+    void translateX(double dx);
+    void translateXmod(double dx, double n);
+    void translateY(double dy);
+    void translateZ(double dz);
+    void centerXY(double x, double y);
+    void scaleX(double da);
+    void scaleY(double da);
+    void scaleXY(double da);
     void resetScale();
-    void rotateZ(float dtheta);
+    void rotateZ(double dtheta);
     
 };
     

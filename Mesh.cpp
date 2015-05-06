@@ -108,45 +108,47 @@ void Mesh::randBlueScaleColor(float A)
 }
 
 /******** Simple spatial transforms *******************************/
-void Mesh::translateX(float dx)
+void Mesh::translateX(double dx)
 {
     transform_matrix_[12] += dx;
 }
 
-void Mesh::translateXmod(float dx, float n)
+void Mesh::translateXmod(double dx, double n)
 {
     transform_matrix_[12] += dx;
-    if(fabs(transform_matrix_[12]) > n)
-        transform_matrix_[12] = 0;
+    if(transform_matrix_[12] > n)
+        transform_matrix_[12] -= n;
+    if(transform_matrix_[12] < -n)
+        transform_matrix_[12] += n;
 }
 
-void Mesh::translateY(float dy)
+void Mesh::translateY(double dy)
 {
     transform_matrix_[13] += dy;
 }
 
-void Mesh::translateZ(float dz)
+void Mesh::translateZ(double dz)
 {
     transform_matrix_[14] += dz;
 }
 
-void Mesh::centerXY(float x, float y)
+void Mesh::centerXY(double x, double y)
 {
     transform_matrix_[12] = x;
     transform_matrix_[13] = y;
 }
 
-void Mesh::scaleX(float da)
+void Mesh::scaleX(double da)
 {
     transform_matrix_[0] *= da;
 }
 
-void Mesh::scaleY(float da)
+void Mesh::scaleY(double da)
 {
     transform_matrix_[5] *= da;
 }
 
-void Mesh::scaleXY(float da)
+void Mesh::scaleXY(double da)
 {
     scaleX(da);
     scaleY(da);
@@ -158,7 +160,7 @@ void Mesh::resetScale()
     transform_matrix_[5] = 1.0;
 }
 
-void Mesh::rotateZ(float dtheta)
+void Mesh::rotateZ(double dtheta)
 {
     
 }
@@ -266,7 +268,7 @@ void Mesh::makeLinearGratingVertices(int periods)
      that allows for simulation of a linear grating presented
      below the fish. The real magic happens in the vertex shader.
      */
-    GLubyte white[4] = {150, 150, 150, 1};
+    GLubyte white[4] = {0, 0, 150, 1};
     GLubyte black[4] = {0, 0, 0, 1};
     GLubyte* color;
     
@@ -388,15 +390,15 @@ void Mesh::makeLinearGratingIndices(int periods)
 
 void Mesh::rotatingGrating(int periods)
 {
-    makeLinearGratingVertices(periods);
-    makeLinearGratingIndices(periods);
+    makeRotatingGratingVertices(periods);
+    makeRotatingGratingIndices(periods);
 }
 
 void Mesh::makeRotatingGratingVertices(int periods)
 {
     // each stripe of the grating will have color black or white
-    GLubyte white[4] = {150, 150, 150, 1};
-    GLubyte black[4] = {0, 0, 0, 1};
+    GLubyte white[4] = {0, 0, 150, 1};
+    GLubyte black[4] = {0, 0, 0/*100*/, 1};
     GLubyte* color;
     
     int num_squares = 3 * 2 * periods;

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <cstdio>
 
-#define SCREEN_WIDTH_GL 0.68
+#define SCREEN_WIDTH_GL 0.7 //0.68
 #define SCREEN_WIDTH_DEG 203
 #define DRIFTING_GRATING 0
 #define PREY 1

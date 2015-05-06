@@ -15,7 +15,7 @@
 #include "Protocol.h"
 #include <cstdio>
 
-#define SCREEN_WIDTH_GL 0.68
+#define SCREEN_WIDTH_GL 0.7 //0.68
 #define SCREEN_EDGE_GL 0.35
 #define DRIFTING_GRATING 0
 #define PREY 1
@@ -25,12 +25,13 @@ int g_exp_type;
 Protocol g_prey_protocol(PREY);
 Protocol g_drifting_protocol(DRIFTING_GRATING);
 
-Mesh g_background("./boring.vert", "./boring.frag");
+Mesh g_background("./rotating_grating.vert", "./boring.frag");
 Mesh g_prey("./boring.vert", "./boring.frag");
+
 Mesh g_rotating("./rotating_grating.vert", "./boring.frag");
 Mesh g_linear("./linear_grating.vert", "./boring.frag");
 
-serial::Serial g_chan("/dev/tty.usbmodem1421", // port ID
+serial::Serial g_chan("/dev/ttyACM0", // port ID
                       4 * 115200, // baud rate
                       serial::Timeout::simpleTimeout(1000));
 
@@ -141,7 +142,7 @@ void update()
         {
             if (g_elapsed_in_trial <= g_trial_duration) // trial is not done yet
             {
-                g_prey.translateX(g_curr_speed * g_dt);
+                g_prey.translateX(-g_curr_speed * g_dt);
                 g_elapsed_in_trial += g_dt;
                 if (!g_serial_up)
                 {
@@ -149,7 +150,7 @@ void update()
                     g_serial_up = true;
                 }
             }
-            else if (g_elapsed_in_trial <= 2 * g_trial_duration) // inter-trial period
+            else if (g_elapsed_in_trial <= 10 + g_trial_duration) // inter-trial period
             {
                 g_elapsed_in_trial += g_dt;
                 g_prey.centerXY(2, -0.02); // move mesh off-screen
@@ -171,7 +172,7 @@ void update()
                     g_elapsed_in_trial = 0;
                     g_prey.resetScale();
                     g_prey.scaleXY(g_curr_size);
-                    g_prey.centerXY(-SCREEN_EDGE_GL, -0.02);
+                    g_prey.centerXY(SCREEN_EDGE_GL, -0.05);
                     if (!g_serial_up)
                     {
                         g_chan.write(&g_msg, 1);
@@ -264,19 +265,27 @@ int main(int argc, char** argv)
 #endif
     
     glfwSetKeyCallback(window, key_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     
     /* This sets up the prey experiment */
-    g_background.rect(-SCREEN_EDGE_GL, -0.16, SCREEN_EDGE_GL, 0.09);
-    g_background.color(0, 0, 100, 255);
-    g_background.translateZ(0.001); // so it is behind the prey
+    //g_background.rect(-SCREEN_EDGE_GL, -0.26, SCREEN_EDGE_GL, 0.11);
+    //g_background.color(0, 0, 100, 255);
+    //g_background.translateZ(0.001); // so it is behind the prey
+    //bufferMesh(&g_background);
+    //initMeshShaders(&g_background);
+   
+    g_background.rotatingGrating(8);
+    g_background.scaleX(SCREEN_EDGE_GL);
+    g_background.scaleY(0.3);
+    g_background.translateZ(0.001);
     bufferMesh(&g_background);
-    initMeshShaders(&g_background);
+    initMeshShaders(&g_background); 
     
     g_prey.circle(1, 0, 0);
-    g_prey.color(0.0, 0.0, 255, 255);
+    g_prey.color(0, 0, 0, 255);
     bufferMesh(&g_prey);
     initMeshShaders(&g_prey);
     
@@ -315,14 +324,13 @@ int main(int argc, char** argv)
     double total_elasped = 0;
     double prev_sec = glfwGetTime();
     double curr_sec;
+    
     while(g_not_done && !glfwWindowShouldClose(window))
     {
         curr_sec = glfwGetTime();
         g_dt = curr_sec - prev_sec;
         prev_sec = curr_sec;
         total_elasped += g_dt;
-        
-        //printf("g_dt = %f\n", g_dt);
         
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
@@ -340,8 +348,8 @@ int main(int argc, char** argv)
             else
                 drawMesh(&g_rotating);
         }
-
-        if (total_elasped > 10) 
+        
+        if (total_elasped > 10)
             update();
         
         glfwSwapBuffers(window);

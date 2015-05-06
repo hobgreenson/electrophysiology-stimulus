@@ -1,10 +1,13 @@
 CC = g++
-CFLAGS = -g -Wall -O3 -DGL_GLEXT_PROTOTYPES -DOSX
-INCFLAGS = -I/usr/X11/include
-LDFLAGS = -framework OpenGL -framework Cocoa\
+#CFLAGS = -g -Wall -O3 -DGL_GLEXT_PROTOTYPES -DOSX
+#INCFLAGS = -I/usr/X11/include
+#LDFLAGS = -framework OpenGL -framework Cocoa\
           -framework IOKit -framework CoreVideo \
           -L"/System/Library/Frameworks/OpenGL.framework/Libraries" \
           -lGL -lGLU -lm -lglfw3 -lserial
+CFLAGS = -g -Wall -O3 
+INCFLAGS = -I. -I/opt/ros/indigo/include
+LDFLAGS = -L. -L/opt/ros/indigo/lib -lserial -lGLEW -lGL -lglfw3 -lX11 -lXxf86vm -lXrandr -lpthread -lXi -lXcursor -lXinerama
 
 all: game 
 game: main.o load_shader.o load_shader.h Vertex2D.h Mesh.o Mesh.h Protocol.o Protocol.h     

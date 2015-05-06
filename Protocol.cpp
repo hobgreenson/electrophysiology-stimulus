@@ -35,14 +35,14 @@ Protocol::Protocol(int experiment_type)
             
         case DRIFTING_GRATING:
         {
-            int speed_set[8] = {2, 4, 8, 10, 20, 40, 60, 80};
+            int speed_set[4] = {4, 10, 40, 80};
             int mode_set[3] = {0, 1, 2};
-            length_ = 3 * 8 * 5;
+            length_ = 3 * 4 * 5;
             mode_array_ = (int*) malloc(length_ * sizeof(int));
             speed_array_ = (int*) malloc(length_ * sizeof(int));
             size_array_ = (int*) malloc(length_ * sizeof(int)); 
             int arr_i = 0;
-            for(int i = 0; i < 8; i++)
+            for(int i = 0; i < 4; i++)
             {
                 int speed = speed_set[i];
                 for(int j = 0; j < 3; j++)
