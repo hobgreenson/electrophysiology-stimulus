@@ -127,6 +127,15 @@ void Mesh::translateY(double dy)
     transform_matrix_[13] += dy;
 }
 
+void Mesh::translateYmod(double dy, double n)
+{
+    transform_matrix_[13] += dy;
+    if(transform_matrix_[13] > n)
+        transform_matrix_[13] -= n;
+    if(transform_matrix_[13] < -n)
+        transform_matrix_[13] += n;
+}
+
 void Mesh::translateZ(double dz)
 {
     transform_matrix_[14] += dz;
@@ -254,7 +263,76 @@ void Mesh::makeIndicesCircle()
     }
 }
 
-/******************** grating ****************************/
+/******************** HORIZONTAL GRATING ****************************/
+
+void Mesh::horzGrating(int periods, GLubyte clevel) {
+    makeHorzGratingVertices(periods, clevel);
+    makeHorzGratingIndices(periods);
+}
+
+void Mesh::makeHorzGratingVertices(int periods, GLubyte clevel) {
+    // will range from y = -1 to 1, with two rectangles per period
+    int num_rects = (periods > 0) ? 2 * periods : 1;
+    num_vertices_ = 4 * num_rects;
+    vertices_ = (Vertex2D*) malloc(num_vertices_ * sizeof(Vertex2D));
+    
+    GLubyte white[4] = {0, 0, clevel, 1};
+    GLubyte black[4] = {0, 0, 0, 1};
+    GLubyte* color;
+    
+    float dy = 2.0 / num_rects;
+    float bottom = -1, top = -1 + dy;
+    int vi = 0;
+    for (int i = 0; i < num_rects; ++i) {
+        if (i % 2 == 0) {
+            color = black;
+        } else {
+            color = white;
+        }
+        vertices_[vi + 0].position[0] = -1;
+        vertices_[vi + 0].position[1] = bottom;
+        for (int ci = 0; ci < 4; ++ci) {
+            vertices_[vi + 0].color[ci] = color[ci];
+        }
+        vertices_[vi + 1].position[0] = 1;
+        vertices_[vi + 1].position[1] = bottom;
+        for (int ci = 0; ci < 4; ++ci) {
+            vertices_[vi + 1].color[ci] = color[ci];
+        }
+        vertices_[vi + 2].position[0] = 1;
+        vertices_[vi + 2].position[1] = top;
+        for (int ci = 0; ci < 4; ++ci) {
+            vertices_[vi + 2].color[ci] = color[ci];
+        }
+        vertices_[vi + 3].position[0] = -1;
+        vertices_[vi + 3].position[1] = top;
+        for (int ci = 0; ci < 4; ++ci) {
+            vertices_[vi + 3].color[ci] = color[ci];
+        }
+        vi += 4;
+        bottom += dy;
+        top += dy;
+    }
+}
+
+void Mesh::makeHorzGratingIndices(int periods) {
+    int num_rects = 2 * periods;
+    num_indices_ = 2 * 3 * num_rects; // two triangles per rect
+    indices_ = (GLushort*) malloc(num_indices_ * sizeof(GLushort));
+    
+    int vi = 0;
+    for (int i = 0; i < num_indices_; i += 6) {
+        indices_[i + 0] = vi;
+        indices_[i + 1] = vi + 1;
+        indices_[i + 2] = vi + 2;
+        indices_[i + 3] = vi;
+        indices_[i + 4] = vi + 2;
+        indices_[i + 5] = vi + 3;
+        vi += 4;
+    }
+}
+
+/******************** VERTICAL GRATING ****************************/
 
 void Mesh::linearGrating(int periods)
 {
