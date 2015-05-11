@@ -42,10 +42,10 @@ serial::Serial g_chan("/dev/ttyACM0", // port ID
                       serial::Timeout::simpleTimeout(1000));
 const uint8_t g_msg = 'a';
 bool g_serial_up = false;
+const uint8_t g_serial_flag = 255;
 
 // closed-loop buffers
 int g_buffer_length = 200;
-const uint8_t g_serial_flag = 255;
 boost::circular_buffer<int> g_data0(g_buffer_length);
 boost::circular_buffer<int> g_data1(g_buffer_length);
 
@@ -202,7 +202,7 @@ void getPowerCoeffs() {
     
 }
 
-float getFishVel() {
+void getFishVel() {
     // compute power of ring buffers
     float p0 = std_dev_ring(g_data0);
     float p1 = std_dev_ring(g_data1);
@@ -211,7 +211,7 @@ float getFishVel() {
     p0 = (p0 > g_pow0_threshold) ? p0 : 0;
     p1 = (p1 > g_pow1_threshold) ? p1 : 0;
     
-    return g_pow0_coeff * p0 - g_pow1_coeff * p1;
+    g_fish_vel = g_pow0_coeff * p0 - g_pow1_coeff * p1;
 }
 
 /************ rendering ************************/
@@ -525,9 +525,9 @@ int main(int argc, char** argv) {
         
         g_drawFunc();
         getSerialData();
-        recordPower();
         
         if (total_elasped > 10) {
+            recordPower();
             g_updateFunc();
         }
         
@@ -554,6 +554,8 @@ int main(int argc, char** argv) {
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
             g_drawFunc();
+            getSerialData();
+            getFishVel();
             g_updateFunc();
         
             glfwSwapBuffers(window);
