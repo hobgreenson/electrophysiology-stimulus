@@ -7,20 +7,31 @@
 
 #define SCREEN_WIDTH_GL 0.7 //0.68
 #define SCREEN_WIDTH_DEG 203
-#define DRIFTING_GRATING 0
-#define PREY 1
+
+#define OPEN_LOOP_OMR 0
+#define OPEN_LOOP_PREY 1
+#define CLOSED_LOOP_OMR 2
+#define CLOSED_LOOP_PREY 3
 
 class Protocol
 {
 public:
-    Protocol(int experiment_type);
+    Protocol();
     ~Protocol();
+    
+    int experiment_type_;
+    
+    void createOpenLoopStepOMR(char* path);
+    void createShortOpenLoopStepOMR(char* path);
+    void createOpenLoopPrey(char* path);
+    
     float nextSize();
     float nextSpeed();
     int nextMode();
     void reset();
-    int experiment_type_;
-    void save(char* path);
+    
+    float sizeToGL(int size);
+    float speedToGL(int speed);
     
 private:
     int* size_array_;
@@ -30,10 +41,6 @@ private:
     int speed_index_;
     int mode_index_;
     int length_;
-    
-    float sizeToGL(int size); 
-    float speedToGL(int speed); 
-    
     void shuffle();
     template <typename T> void swap(T* a, T* b);
 };

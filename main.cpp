@@ -5,6 +5,7 @@
 #include <numeric>
 #include <boost/circular_buffer.hpp>
 #include <cstdio>
+#include <cmath>
 
 #include "Vertex2D.h"
 #include "load_shader.h"
@@ -25,8 +26,7 @@ void (*g_drawFunc)(); // points to the appropriate draw function
 void (*g_updateFunc)(); // points to the appropriate update function
 
 // sequences of speeds, sizes and directions for prey and omr experiments
-Protocol g_drifting_protocol(OPEN_LOOP_OMR);
-Protocol g_prey_protocol(OPEN_LOOP_PREY);
+Protocol g_protocol;
 
 // meshes for experiments (sets of vertices, colors and data for drawing shapes.
 // constructor arguments indicate which shaders to use with a mesh
@@ -44,6 +44,8 @@ const uint8_t g_msg = 'a';
 bool g_serial_up = false;
 
 // closed-loop buffers
+int g_buffer_length = 200;
+const uint8_t g_serial_flag = 255;
 boost::circular_buffer<int> g_data0(g_buffer_length);
 boost::circular_buffer<int> g_data1(g_buffer_length);
 
@@ -53,6 +55,15 @@ float g_pow0_threshold = 0;
 float g_pow1_threshold = 0;
 float g_pow0_coeff = 0;
 float g_pow1_coeff = 0;
+
+// closed-loop velocities:
+//      g_total_vel = g_stim_vel - g_fish_vel
+float g_fish_vel = 0;
+float g_stim_vel = 0;
+float g_total_vel = 0;
+
+std::vector<float> g_fish_vel_record;
+std::vector<float> g_stim_vel_record;
 
 // timing and state variables for updating the graphics
 double g_dt = 0;
@@ -64,7 +75,7 @@ float g_curr_speed = -1;
 float g_curr_size = -1;
 bool g_not_done = true;
 
-/************ callbacks ************************/
+/************ GLFW callbacks ************************/
 
 static void error_callback(int error, const char* description) {
     fputs(description, stderr);
@@ -76,11 +87,11 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
 }
 
-/************* closed-loop ***************************************/
+/************* closed-loop functions ***************************************/
 
 float mean_vec(std::vector<float>& buffer) {
     
-    // computes mean value of a vector
+    // computes mean value of a float vector
     
     float sum = std::accumulate(buffer.begin(), buffer.end(), 0);
     return sum / buffer.size();
@@ -88,7 +99,7 @@ float mean_vec(std::vector<float>& buffer) {
 
 float std_dev_ring(boost::circular_buffer<int>& buffer) {
     
-    // computes std. deviation of data in a ring buffer
+    // computes std. deviation of integer data in a ring buffer
     
     float M_next, M_prev, S_next = 0, S_prev = 0, R_prev, R_next;
     int k = 1;
@@ -110,20 +121,20 @@ float std_dev_ring(boost::circular_buffer<int>& buffer) {
     return sqrt(S_next / k);
 }
 
-float std_dev_vec(std::vector<int>& buffer) {
+float std_dev_vec(std::vector<float>& buffer) {
     
-    // computes std. deviation of data in a vector
+    // computes std. deviation of float data in a vector
     
     float M_next, M_prev, S_next = 0, S_prev = 0, R_prev, R_next;
     int k = 1;
-    std::vector<int>::iterator i = buffer.begin();
+    std::vector<float>::iterator i = buffer.begin();
     
     M_prev = M_next = *i;
     i++;
     for (; i != buffer.end(); ++i) {
         k++;
-        R_prev = (float)(*i) - M_prev;
-        R_next = (float)(*i) - M_next;
+        R_prev = (*i) - M_prev;
+        R_next = (*i) - M_next;
         
         M_next = M_prev + R_prev / k;
         S_next = S_prev + R_prev * R_next;
@@ -145,7 +156,7 @@ void getSerialData() {
     
     // split data into two channels
     int i = 0, i0 = 0, i1 = 0;
-    for (; data[i] != g_flag; ++i) {} // find the first 0xFF flag in the data
+    for (; data[i] != g_serial_flag; ++i) {} // find the first 0xFF flag in the data
     switch (i) {
         case 0:
             // data = [0xFF, l, r, ...]
@@ -177,14 +188,8 @@ void getSerialData() {
 }
 
 void recordPower() {
-    // compute power of ring buffers
-    float p0 = std_dev_ring(g_data0);
-    float p1 = std_dev_ring(g_data1);
-    
-    for (i = 0; i < ba / 3; ++i) {
-        g_pow0.push_back(p0);
-        g_pow1.push_back(p1);
-    }
+    g_pow0.push_back(std_dev_ring(g_data0));
+    g_pow1.push_back(std_dev_ring(g_data1));
 }
 
 void getPowerThreshold() {
@@ -193,15 +198,14 @@ void getPowerThreshold() {
 }
 
 void getPowerCoeffs() {
-    
     // want mean(left) = mean(right) for forward swimming
     
 }
 
 float getFishVel() {
     // compute power of ring buffers
-    float p0 = std_dev(g_data0);
-    float p1 = std_dev(g_data1);
+    float p0 = std_dev_ring(g_data0);
+    float p1 = std_dev_ring(g_data1);
     
     // compute fish velocity from power
     p0 = (p0 > g_pow0_threshold) ? p0 : 0;
@@ -321,8 +325,8 @@ void updateOpenLoopPrey() {
         
     } else {
         // start a new trial
-        g_curr_speed = g_prey_protocol.nextSpeed();
-        g_curr_size = g_prey_protocol.nextSize();
+        g_curr_speed = g_protocol.nextSpeed();
+        g_curr_size = g_protocol.nextSize();
         
         if (g_curr_speed < 0 || g_curr_size < 0) { // end of protocol
             g_not_done = false;
@@ -364,14 +368,14 @@ void updateOpenLoopOMR() {
             g_serial_up = false;
         }
     } else {
-        // start a new trial
-        g_curr_speed = g_drifting_protocol.nextSpeed();
-        g_curr_mode = g_drifting_protocol.nextMode();
+        g_curr_speed = g_protocol.nextSpeed();
+        g_curr_mode = g_protocol.nextMode();
         
         if (g_curr_speed < 0 || g_curr_mode < 0) {
             // end of protocol
             g_not_done = false;
         } else {
+            // start a new trial
             g_elapsed_in_trial = 0;
             g_chan.write(&g_msg, 1);
             g_serial_up = true;
@@ -380,7 +384,7 @@ void updateOpenLoopOMR() {
 }
 
 void updateClosedLoopOMR() {
-    g_horz.translateYmod(0.1 * g_dt, 1);
+    //g_horz.translateYmod(0.1 * g_dt, 1);
 }
 
 void setupExperiment(int type, char* path) {
@@ -398,9 +402,9 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_drifting_protocol.save(path);
-            g_curr_speed = g_drifting_protocol.nextSpeed();
-            g_curr_mode = g_drifting_protocol.nextMode();
+            g_protocol.createOpenLoopStepOMR(path);
+            g_curr_speed = g_protocol.nextSpeed();
+            g_curr_mode = g_protocol.nextMode();
             g_trial_duration = 10;
             
             g_updateFunc = &updateOpenLoopOMR;
@@ -421,9 +425,9 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_prey);
             initMeshShaders(&g_prey);
             
-            g_prey_protocol.save(path);
-            g_curr_speed = g_prey_protocol.nextSpeed();
-            g_curr_size = g_prey_protocol.nextSize();
+            g_protocol.createOpenLoopPrey(path);
+            g_curr_speed = g_protocol.nextSpeed();
+            g_curr_size = g_protocol.nextSize();
             g_prey.scaleXY(g_curr_size);
             g_prey.centerXY(SCREEN_EDGE_GL, -0.02);
             
@@ -445,9 +449,9 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_drifting_protocol.save(path);
-            g_curr_speed = g_drifting_protocol.nextSpeed();
-            g_curr_mode = g_drifting_protocol.nextMode();
+            g_protocol.createShortOpenLoopStepOMR(path);
+            g_curr_speed = g_protocol.nextSpeed();
+            g_curr_mode = g_protocol.nextMode();
             g_trial_duration = 10;
             
             g_updateFunc = &updateOpenLoopOMR;
@@ -468,6 +472,7 @@ void setupExperiment(int type, char* path) {
 /************ main ************************/
 
 int main(int argc, char** argv) {
+    
     // GLFW set up
     GLFWwindow* window;
     glfwSetErrorCallback(error_callback);
@@ -501,12 +506,14 @@ int main(int argc, char** argv) {
     glEnable(GL_CULL_FACE);
     
     // start an experiment
-    setupExperiment(atoi(argv[1]), argv[2]);
+    int exp_type = atoi(argv[1]);
+    setupExperiment(exp_type, argv[2]);
     
     double total_elasped = 0;
     double prev_sec = glfwGetTime();
     double curr_sec;
     
+    // first game-loop in open-loop
     while(g_not_done && !glfwWindowShouldClose(window)) {
         // game loop
         curr_sec = glfwGetTime();
@@ -517,13 +524,41 @@ int main(int argc, char** argv) {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         g_drawFunc();
+        getSerialData();
+        recordPower();
         
-        //if (total_elasped > 10) {
+        if (total_elasped > 10) {
             g_updateFunc();
-        //}
+        }
         
         glfwSwapBuffers(window);
         glfwPollEvents();
+    }
+    
+    // second game loop in closed-loop
+    if (exp_type == CLOSED_LOOP_OMR || exp_type == CLOSED_LOOP_PREY) {
+        
+        g_not_done = true;
+        getPowerThreshold();
+        getPowerCoeffs();
+        g_updateFunc = &updateClosedLoopOMR;
+        g_drawFunc = &drawClosedLoopOMR;
+    
+        while(g_not_done && !glfwWindowShouldClose(window)) {
+            // game loop
+            curr_sec = glfwGetTime();
+            g_dt = curr_sec - prev_sec;
+            prev_sec = curr_sec;
+            total_elasped += g_dt;
+        
+            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+        
+            g_drawFunc();
+            g_updateFunc();
+        
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
     }
     
     printf("experiment took %f seconds\n", total_elasped);
