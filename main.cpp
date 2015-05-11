@@ -1,19 +1,15 @@
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#include <OpenGL/gl3.h>
-#include <OpenGL/glext.h>
-#include <GLFW/glfw3.h>
-#else
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#endif
-
 #include <serial/serial.h>
+#include <numeric>
+#include <boost/circular_buffer.hpp>
+#include <cstdio>
+
 #include "Vertex2D.h"
 #include "load_shader.h"
 #include "Mesh.h"
 #include "Protocol.h"
-#include <cstdio>
 
 #define SCREEN_WIDTH_GL 0.7 //0.68
 #define SCREEN_EDGE_GL 0.35
@@ -38,7 +34,7 @@ Mesh g_background("./rotating_grating.vert", "./boring.frag");
 Mesh g_prey("./boring.vert", "./boring.frag");
 Mesh g_rotating("./rotating_grating.vert", "./boring.frag");
 Mesh g_linear("./linear_grating.vert", "./boring.frag");
-Mesh g_horz("./horzGrating.vert", "./boring.frag");
+//Mesh g_horz("./horzGrating.vert", "./boring.frag");
 
 // serial communication with arduino boards for synchronization and closed loop
 serial::Serial g_chan("/dev/ttyACM0", // port ID
@@ -46,6 +42,17 @@ serial::Serial g_chan("/dev/ttyACM0", // port ID
                       serial::Timeout::simpleTimeout(1000));
 const uint8_t g_msg = 'a';
 bool g_serial_up = false;
+
+// closed-loop buffers
+boost::circular_buffer<int> g_data0(g_buffer_length);
+boost::circular_buffer<int> g_data1(g_buffer_length);
+
+std::vector<float> g_pow0;
+std::vector<float> g_pow1;
+float g_pow0_threshold = 0;
+float g_pow1_threshold = 0;
+float g_pow0_coeff = 0;
+float g_pow1_coeff = 0;
 
 // timing and state variables for updating the graphics
 double g_dt = 0;
@@ -67,6 +74,140 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
+}
+
+/************* closed-loop ***************************************/
+
+float mean_vec(std::vector<float>& buffer) {
+    
+    // computes mean value of a vector
+    
+    float sum = std::accumulate(buffer.begin(), buffer.end(), 0);
+    return sum / buffer.size();
+}
+
+float std_dev_ring(boost::circular_buffer<int>& buffer) {
+    
+    // computes std. deviation of data in a ring buffer
+    
+    float M_next, M_prev, S_next = 0, S_prev = 0, R_prev, R_next;
+    int k = 1;
+    boost::circular_buffer<int>::iterator i = buffer.begin();
+    
+    M_prev = M_next = *i;
+    i++;
+    for (; i != buffer.end(); ++i) {
+        k++;
+        R_prev = (float)(*i) - M_prev;
+        R_next = (float)(*i) - M_next;
+        
+        M_next = M_prev + R_prev / k;
+        S_next = S_prev + R_prev * R_next;
+        M_prev = M_next;
+        S_prev = S_next;
+    }
+    
+    return sqrt(S_next / k);
+}
+
+float std_dev_vec(std::vector<int>& buffer) {
+    
+    // computes std. deviation of data in a vector
+    
+    float M_next, M_prev, S_next = 0, S_prev = 0, R_prev, R_next;
+    int k = 1;
+    std::vector<int>::iterator i = buffer.begin();
+    
+    M_prev = M_next = *i;
+    i++;
+    for (; i != buffer.end(); ++i) {
+        k++;
+        R_prev = (float)(*i) - M_prev;
+        R_next = (float)(*i) - M_next;
+        
+        M_next = M_prev + R_prev / k;
+        S_next = S_prev + R_prev * R_next;
+        M_prev = M_next;
+        S_prev = S_next;
+    }
+    
+    return sqrt(S_next / k);
+}
+
+void getSerialData() {
+    
+    // grabs and parses data from the arduino, storing
+    // data in two ring buffers (left and right ventral roots)
+    
+    int ba = g_chan.available();
+    uint8_t data[ba];
+    g_chan.read(data, ba);
+    
+    // split data into two channels
+    int i = 0, i0 = 0, i1 = 0;
+    for (; data[i] != g_flag; ++i) {} // find the first 0xFF flag in the data
+    switch (i) {
+        case 0:
+            // data = [0xFF, l, r, ...]
+            i0 = 1;
+            i1 = 2;
+            break;
+        case 1:
+            // data = [r, 0xFF, l, ...]
+            i0 = 2;
+            i1 = 0;
+            break;
+        case 2:
+            // data = [l, r, 0xFF, ...]
+            i0 = 0;
+            i1 = 1;
+            break;
+        default:
+            break;
+    }
+    
+    // copy left and right data into buffers
+    for (; i0 < ba; i0 += 3) {
+        g_data0.push_back(data[i0]);
+    }
+    for (; i1 < ba; i1 += 3) {
+        g_data1.push_back(data[i1]);
+    }
+    
+}
+
+void recordPower() {
+    // compute power of ring buffers
+    float p0 = std_dev_ring(g_data0);
+    float p1 = std_dev_ring(g_data1);
+    
+    for (i = 0; i < ba / 3; ++i) {
+        g_pow0.push_back(p0);
+        g_pow1.push_back(p1);
+    }
+}
+
+void getPowerThreshold() {
+    g_pow0_threshold = mean_vec(g_pow0) + 2 * std_dev_vec(g_pow0);
+    g_pow1_threshold = mean_vec(g_pow1) + 2 * std_dev_vec(g_pow1);
+}
+
+void getPowerCoeffs() {
+    
+    // want mean(left) = mean(right) for forward swimming
+    
+}
+
+float getFishVel() {
+    // compute power of ring buffers
+    float p0 = std_dev(g_data0);
+    float p1 = std_dev(g_data1);
+    
+    // compute fish velocity from power
+    p0 = (p0 > g_pow0_threshold) ? p0 : 0;
+    p1 = (p1 > g_pow1_threshold) ? p1 : 0;
+    
+    return g_pow0_coeff * p0 - g_pow1_coeff * p1;
 }
 
 /************ rendering ************************/
@@ -152,7 +293,7 @@ void drawOpenLoopPrey() {
 }
 
 void drawClosedLoopOMR() {
-    drawMesh(&g_horz);
+    drawMesh(&g_rotating);
 }
 
 /*********** Experiment set-up and update ************************/
@@ -292,12 +433,25 @@ void setupExperiment(int type, char* path) {
             break;
             
         case CLOSED_LOOP_OMR:
-            g_horz.horzGrating(8, 255);
-            bufferMesh(&g_horz);
-            initMeshShaders(&g_horz);
+            g_rotating.rotatingGrating(8);
+            g_rotating.scaleX(SCREEN_EDGE_GL);
+            g_rotating.scaleY(0.3);
+            bufferMesh(&g_rotating);
+            initMeshShaders(&g_rotating);
             
-            g_updateFunc = &updateClosedLoopOMR;
-            g_drawFunc = &drawClosedLoopOMR;
+            g_linear.linearGrating(8);
+            g_linear.scaleX(SCREEN_EDGE_GL);
+            g_linear.scaleY(0.3);
+            bufferMesh(&g_linear);
+            initMeshShaders(&g_linear);
+            
+            g_drifting_protocol.save(path);
+            g_curr_speed = g_drifting_protocol.nextSpeed();
+            g_curr_mode = g_drifting_protocol.nextMode();
+            g_trial_duration = 10;
+            
+            g_updateFunc = &updateOpenLoopOMR;
+            g_drawFunc = &drawOpenLoopOMR;
 
             break;
             

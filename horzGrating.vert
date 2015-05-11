@@ -12,6 +12,7 @@ void main() {
     vec2 w = vPosition;
     w.y -= 1;
     gl_Position = transform_matrix * vec4(w, 0, 1);
+    
     color = vColor / 255;
 }
 
