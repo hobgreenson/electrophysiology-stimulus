@@ -12,6 +12,7 @@
 #include "Mesh.h"
 #include "Protocol.h"
 
+#define PI 3.14159265359
 #define SCREEN_WIDTH_GL 0.7 //0.68
 #define SCREEN_EDGE_GL 0.35
 
@@ -67,6 +68,7 @@ std::vector<float> g_stim_vel_record;
 
 // timing and state variables for updating the graphics
 double g_dt = 0;
+double g_total_elasped = 0;
 double g_elapsed_in_trial = 0;
 double g_trial_duration = 0;
 
@@ -384,7 +386,7 @@ void updateOpenLoopOMR() {
 }
 
 void updateClosedLoopOMR() {
-    //g_horz.translateYmod(0.1 * g_dt, 1);
+    
 }
 
 void setupExperiment(int type, char* path) {
@@ -509,24 +511,23 @@ int main(int argc, char** argv) {
     int exp_type = atoi(argv[1]);
     setupExperiment(exp_type, argv[2]);
     
-    double total_elasped = 0;
     double prev_sec = glfwGetTime();
     double curr_sec;
     
     // first game-loop in open-loop
-    while(g_not_done && !glfwWindowShouldClose(window)) {
+    while (g_not_done && !glfwWindowShouldClose(window)) {
         // game loop
         curr_sec = glfwGetTime();
         g_dt = curr_sec - prev_sec;
         prev_sec = curr_sec;
-        total_elasped += g_dt;
+        g_total_elasped += g_dt;
         
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         g_drawFunc();
         getSerialData();
         
-        if (total_elasped > 10) {
+        if (g_total_elasped > 10) {
             recordPower();
             g_updateFunc();
         }
@@ -539,12 +540,13 @@ int main(int argc, char** argv) {
     if (exp_type == CLOSED_LOOP_OMR || exp_type == CLOSED_LOOP_PREY) {
         
         g_not_done = true;
+        g_total_elasped = 0;
         getPowerThreshold();
         getPowerCoeffs();
         g_updateFunc = &updateClosedLoopOMR;
         g_drawFunc = &drawClosedLoopOMR;
     
-        while(g_not_done && !glfwWindowShouldClose(window)) {
+        while (g_not_done && !glfwWindowShouldClose(window)) {
             // game loop
             curr_sec = glfwGetTime();
             g_dt = curr_sec - prev_sec;
@@ -562,8 +564,6 @@ int main(int argc, char** argv) {
             glfwPollEvents();
         }
     }
-    
-    printf("experiment took %f seconds\n", total_elasped);
     
     g_chan.close();
     glfwDestroyWindow(window);
