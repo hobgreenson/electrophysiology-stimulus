@@ -50,12 +50,22 @@ int g_buffer_length = 200;
 boost::circular_buffer<int> g_data0(g_buffer_length);
 boost::circular_buffer<int> g_data1(g_buffer_length);
 
-std::vector<float> g_pow0;
-std::vector<float> g_pow1;
-float g_pow0_threshold = 0;
-float g_pow1_threshold = 0;
-float g_pow0_coeff = 0;
-float g_pow1_coeff = 0;
+// record of power for leftward trials
+std::vector<float> g_pow0_leftward;
+std::vector<float> g_pow1_leftward;
+
+// record of power for rightward trials
+std::vector<float> g_pow0_rightward;
+std::vector<float> g_pow1_rightward;
+
+// record of power for forward trials
+std::vector<float> g_pow0_forward;
+std::vector<float> g_pow1_forward;
+
+float g_pow0_threshold;
+float g_pow1_threshold;
+float g_bias;
+float g_scale;
 
 // closed-loop velocities:
 //      g_total_vel = g_stim_vel - g_fish_vel
@@ -89,7 +99,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
     }
 }
 
-/************* closed-loop functions ***************************************/
+/************* closed-loop functions *********************/
 
 float mean_vec(std::vector<float>& buffer) {
     
@@ -186,22 +196,158 @@ void getSerialData() {
     for (; i1 < ba; i1 += 3) {
         g_data1.push_back(data[i1]);
     }
-    
 }
 
 void recordPower() {
-    g_pow0.push_back(std_dev_ring(g_data0));
-    g_pow1.push_back(std_dev_ring(g_data1));
+    float p0 = std_dev_ring(g_data0);
+    float p1 = std_dev_ring(g_data1);
+    
+    // power is recorded in separate buffers for each type
+    // of stimulus
+    switch (g_curr_mode) {
+        case 0: // rightward stim
+            g_pow0_rightward.push_back(p0);
+            g_pow1_rightward.push_back(p1);
+            break;
+        case 1: // leftward stim
+            g_pow0_leftward.push_back(p0);
+            g_pow1_leftward.push_back(p1);
+            break;
+        case 2: // forward stim
+            g_pow0_forward.push_back(p0);
+            g_pow1_forward.push_back(p1);
+            break;
+        default:
+            break;
+    }
 }
 
 void getPowerThreshold() {
-    g_pow0_threshold = mean_vec(g_pow0) + 2 * std_dev_vec(g_pow0);
-    g_pow1_threshold = mean_vec(g_pow1) + 2 * std_dev_vec(g_pow1);
+    float th_p0_rightward = mean_vec(g_pow0_rightward) + 2 * std_dev_vec(g_pow0_rightward);
+    float th_p1_rightward = mean_vec(g_pow1_rightward) + 2 * std_dev_vec(g_pow1_rightward);
+    
+    float th_p0_leftward = mean_vec(g_pow0_leftward) + 2 * std_dev_vec(g_pow0_leftward);
+    float th_p1_leftward = mean_vec(g_pow1_leftward) + 2 * std_dev_vec(g_pow1_leftward);
+
+    float th_p0_forward = mean_vec(g_pow0_forward) + 2 * std_dev_vec(g_pow0_forward);
+    float th_p1_forward = mean_vec(g_pow1_forward) + 2 * std_dev_vec(g_pow1_forward);
+    
+    g_pow0_threshold = (th_p0_rightward + th_p0_leftward + th_p0_forward) / 3;
+    g_pow1_threshold = (th_p0_rightward + th_p0_leftward + th_p0_forward) / 3;
 }
 
-void getPowerCoeffs() {
-    // want mean(left) = mean(right) for forward swimming
+int mymin(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+void thresholdVector(std::vector<float>& data, float threshold) {
+    for (int i = 0; i < data.size(); ++i) {
+        data[i] = (data[i] < threshold) ? 0 : data[i];
+    }
+}
+
+void smoothVector(std::vector<float>& data, std::vector<float>& target, int win) {
+    // applies boxcar smoothing to data, storing results in target.
+    // the target vector is assumed to be empty (smoothed values are appended to it)
+    float smoothing_sum;
+    target.push_back(0);
+    for (int i = 1; i < data.size(); ++i) {
+        smoothing_sum = 0;
+        if (i < win) {
+            for (int j = 0; j < i; ++j) {
+                smoothing_sum += sp_rightward[j]
+            }
+            target.push_back(smoothing_sum / (float)win);
+        } else {
+            for (int j = i - win; j < i; ++j) {
+                smoothing_sum += sp_rightward[j]
+            }
+            target.push_back(smoothing_sum / (float)win);
+        }
+    }
+}
+
+void getPowerCoeffs(bool saveit) {
+
+    // threshold power
+    thresholdVector(g_pow0_rightward, g_pow0_threshold);
+    thresholdVector(g_pow0_leftward, g_pow0_threshold);
+    thresholdVector(g_pow0_forward, g_pow0_threshold);
+    thresholdVector(g_pow1_rightward, g_pow1_threshold);
+    thresholdVector(g_pow1_leftward, g_pow1_threshold);
+    thresholdVector(g_pow1_forward, g_pow1_threshold);
     
+    // get power difference and power sum
+    int i, n;
+    std::vector<float> dp_rightward;
+    std::vector<float> sp_rightward;
+    n = mymin((int) g_pow0_rightward.size(), (int) g_pow1_rightward.size());
+    for (i = 0; i < n; ++i) {
+        dp_rightward.push_back(g_pow1_rightward[i] - g_pow0_rightward[i]);
+        sp_rightward.push_back(g_pow1_rightward[i] + g_pow0_rightward[i]);
+    }
+    
+    std::vector<float> dp_leftward;
+    std::vector<float> sp_leftward;
+    n = mymin((int) g_pow0_leftward.size(), (int) g_pow1_leftward.size());
+    for (i = 0; i < n; ++i) {
+        dp_leftward.push_back(g_pow1_leftward[i] - g_pow0_leftward[i]);
+        sp_leftward.push_back(g_pow1_leftward[i] + g_pow0_leftward[i]);
+    }
+    
+    std::vector<float> dp_forward;
+    std::vector<float> sp_forward;
+    n = mymin((int) g_pow0_forward.size(), (int) g_pow1_forward.size());
+    for (i = 0; i < n; ++i) {
+        dp_forward.push_back(g_pow1_forward[i] - g_pow0_forward[i]);
+        sp_forward.push_back(g_pow1_forward[i] + g_pow0_forward[i]);
+    }
+
+    // smooth the power sum
+    int win = 3; // assuming frame rate of 60 Hz, this is a 50 ms window
+    
+    std::vector<float> smooth_sp_rightward;
+    smoothVector(sp_rightward, smooth_sp_rightward, win);
+    
+    std::vector<float> smooth_sp_leftward;
+    smoothVector(sp_leftward, smooth_sp_leftward, win);
+    
+    std::vector<float> smooth_sp_forward;
+    smoothVector(sp_forward, smooth_sp_forward, win);
+    
+    // count swim bouts
+    int num_bouts_rightward = 0, num_bouts_leftward = 0, num_bouts_forward = 0;
+    float th;
+    
+    th = 0.5 * std_dev_vec(smooth_sp_rightward);
+    for (i = 1; i < smooth_sp_rightward.size(); ++i) {
+        if (smooth_sp_rightward[i-1] <= th && smooth_sp_rightward[i] > th) {
+            num_bouts_rightward++;
+        }
+    }
+    th = 0.5 * std_dev_vec(smooth_sp_leftward);
+    for (i = 1; i < smooth_sp_leftward.size(); ++i) {
+        if (smooth_sp_leftward[i-1] <= th && smooth_sp_leftward[i] > th) {
+            num_bouts_leftward++;
+        }
+    }
+    th = 0.5 * std_dev_vec(smooth_sp_forward);
+    for (i = 1; i < smooth_sp_forward.size(); ++i) {
+        if (smooth_sp_forward[i-1] <= th && smooth_sp_forward[i] > th) {
+            num_bouts_forward++;
+        }
+    }
+    
+    // finally find coefficients
+    g_bias = std::accumulate(dp_forward.begin(), dp_forward.end(), 0) / num_bouts_forward;
+    float c_right = std::accumulate(dp_rightward.begin(), dp_rightward.end(), 0) / num_bouts_rightward;
+    float c_left = std::accumulate(dp_leftward.begin(), dp_leftward.end(), 0) / num_bouts_leftward;
+    g_scale = 39.0 * 2 / (c_right + c_left);
+    
+    // save computations if desired
+    if (savit) {
+        
+    }
 }
 
 void getFishVel() {
@@ -370,6 +516,7 @@ void updateOpenLoopOMR() {
             g_serial_up = false;
         }
     } else {
+        
         g_curr_speed = g_protocol.nextSpeed();
         g_curr_mode = g_protocol.nextMode();
         
@@ -536,9 +683,11 @@ int main(int argc, char** argv) {
         glfwPollEvents();
     }
     
+    savePower();
+    
     // second game loop in closed-loop
     if (exp_type == CLOSED_LOOP_OMR || exp_type == CLOSED_LOOP_PREY) {
-        
+        // for the purposes of closed-loop, analyze power
         g_not_done = true;
         g_total_elasped = 0;
         getPowerThreshold();
@@ -551,7 +700,7 @@ int main(int argc, char** argv) {
             curr_sec = glfwGetTime();
             g_dt = curr_sec - prev_sec;
             prev_sec = curr_sec;
-            total_elasped += g_dt;
+            g_total_elasped += g_dt;
         
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
