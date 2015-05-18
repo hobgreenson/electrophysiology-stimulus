@@ -345,8 +345,84 @@ void getPowerCoeffs(bool saveit) {
     g_scale = 39.0 * 2 / (c_right + c_left);
     
     // save computations if desired
-    if (savit) {
+    if (saveit) {
+        FILE* file = fopen("POWERrecord.txt", "w");
         
+        std::vector<float>::iterator i;
+        
+        // thresholded power for each stimulus direction
+        for (i = g_pow0_rightward.begin(); i != g_pow0_rightward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = g_pow1_rightward.begin(); i != g_pow1_rightward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = g_pow0_leftward.begin(); i != g_pow0_leftward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = g_pow1_leftward.begin(); i != g_pow1_leftward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = g_pow0_forward.begin(); i != g_pow0_forward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = g_pow1_forward.begin(); i != g_pow1_forward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        
+        // power sum and power difference for each stimulus direction
+        for (i = dp_rightward.begin(); i != dp_rightward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = sp_rightward.begin(); i != sp_rightward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = dp_leftward.begin(); i != dp_leftward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = sp_leftward.begin(); i != sp_leftward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = dp_forward.begin(); i != dp_forward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = sp_forward.begin(); i != sp_forward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        
+        // smoothed power sum
+        for (i = smooth_sp_rightward.begin(); i != smooth_sp_rightward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = smooth_sp_leftward.begin(); i != smooth_sp_leftward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        for (i = smooth_sp_forward.begin(); i != smooth_sp_forward.end(); ++i) {
+            fprintf("%f,", *i);
+        }
+        fprintf("\n");
+        
+        // bout counts
+        fprintf("%f,%f,%f\n", num_bouts_rightward, num_bouts_leftward, num_bouts_forward);
+        
+        // bias and scale
+        fprintf("%f,%f", g_bias, g_scale);
+        
+        fclose(file);
     }
 }
 
@@ -359,7 +435,9 @@ void getFishVel() {
     p0 = (p0 > g_pow0_threshold) ? p0 : 0;
     p1 = (p1 > g_pow1_threshold) ? p1 : 0;
     
-    g_fish_vel = g_pow0_coeff * p0 - g_pow1_coeff * p1;
+    // correct for forward bias and scale data to degrees / s
+    float dp = p1 - p0;
+    g_fish_vel = g_scale * (dp - g_bias);
 }
 
 /************ rendering ************************/
@@ -682,8 +760,6 @@ int main(int argc, char** argv) {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    
-    savePower();
     
     // second game loop in closed-loop
     if (exp_type == CLOSED_LOOP_OMR || exp_type == CLOSED_LOOP_PREY) {
