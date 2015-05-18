@@ -233,15 +233,15 @@ void getPowerThreshold() {
     float th_p1_forward = mean_vec(g_pow1_forward) + 2 * std_dev_vec(g_pow1_forward);
     
     g_pow0_threshold = (th_p0_rightward + th_p0_leftward + th_p0_forward) / 3;
-    g_pow1_threshold = (th_p0_rightward + th_p0_leftward + th_p0_forward) / 3;
+    g_pow1_threshold = (th_p1_rightward + th_p1_leftward + th_p1_forward) / 3;
 }
 
-int mymin(int a, int b) {
+unsigned int mymin(unsigned int a, unsigned int b) {
     return (a < b) ? a : b;
 }
 
 void thresholdVector(std::vector<float>& data, float threshold) {
-    for (int i = 0; i < data.size(); ++i) {
+    for (unsigned int i = 0; i < data.size(); ++i) {
         data[i] = (data[i] < threshold) ? 0 : data[i];
     }
 }
@@ -251,16 +251,16 @@ void smoothVector(std::vector<float>& data, std::vector<float>& target, int win)
     // the target vector is assumed to be empty (smoothed values are appended to it)
     float smoothing_sum;
     target.push_back(0);
-    for (int i = 1; i < data.size(); ++i) {
+    for (int i = 1; i < (int)data.size(); ++i) {
         smoothing_sum = 0;
         if (i < win) {
             for (int j = 0; j < i; ++j) {
-                smoothing_sum += sp_rightward[j]
+                smoothing_sum += data[j];
             }
             target.push_back(smoothing_sum / (float)win);
         } else {
             for (int j = i - win; j < i; ++j) {
-                smoothing_sum += sp_rightward[j]
+                smoothing_sum += data[j];
             }
             target.push_back(smoothing_sum / (float)win);
         }
@@ -278,10 +278,10 @@ void getPowerCoeffs(bool saveit) {
     thresholdVector(g_pow1_forward, g_pow1_threshold);
     
     // get power difference and power sum
-    int i, n;
+    unsigned int i, n;
     std::vector<float> dp_rightward;
     std::vector<float> sp_rightward;
-    n = mymin((int) g_pow0_rightward.size(), (int) g_pow1_rightward.size());
+    n = mymin(g_pow0_rightward.size(), g_pow1_rightward.size());
     for (i = 0; i < n; ++i) {
         dp_rightward.push_back(g_pow1_rightward[i] - g_pow0_rightward[i]);
         sp_rightward.push_back(g_pow1_rightward[i] + g_pow0_rightward[i]);
@@ -289,7 +289,7 @@ void getPowerCoeffs(bool saveit) {
     
     std::vector<float> dp_leftward;
     std::vector<float> sp_leftward;
-    n = mymin((int) g_pow0_leftward.size(), (int) g_pow1_leftward.size());
+    n = mymin(g_pow0_leftward.size(), g_pow1_leftward.size());
     for (i = 0; i < n; ++i) {
         dp_leftward.push_back(g_pow1_leftward[i] - g_pow0_leftward[i]);
         sp_leftward.push_back(g_pow1_leftward[i] + g_pow0_leftward[i]);
@@ -297,7 +297,7 @@ void getPowerCoeffs(bool saveit) {
     
     std::vector<float> dp_forward;
     std::vector<float> sp_forward;
-    n = mymin((int) g_pow0_forward.size(), (int) g_pow1_forward.size());
+    n = mymin(g_pow0_forward.size(), g_pow1_forward.size());
     for (i = 0; i < n; ++i) {
         dp_forward.push_back(g_pow1_forward[i] - g_pow0_forward[i]);
         sp_forward.push_back(g_pow1_forward[i] + g_pow0_forward[i]);
@@ -352,75 +352,78 @@ void getPowerCoeffs(bool saveit) {
         
         // thresholded power for each stimulus direction
         for (i = g_pow0_rightward.begin(); i != g_pow0_rightward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = g_pow1_rightward.begin(); i != g_pow1_rightward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = g_pow0_leftward.begin(); i != g_pow0_leftward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = g_pow1_leftward.begin(); i != g_pow1_leftward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = g_pow0_forward.begin(); i != g_pow0_forward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = g_pow1_forward.begin(); i != g_pow1_forward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         
         // power sum and power difference for each stimulus direction
         for (i = dp_rightward.begin(); i != dp_rightward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = sp_rightward.begin(); i != sp_rightward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = dp_leftward.begin(); i != dp_leftward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = sp_leftward.begin(); i != sp_leftward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = dp_forward.begin(); i != dp_forward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = sp_forward.begin(); i != sp_forward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         
         // smoothed power sum
         for (i = smooth_sp_rightward.begin(); i != smooth_sp_rightward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = smooth_sp_leftward.begin(); i != smooth_sp_leftward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
         for (i = smooth_sp_forward.begin(); i != smooth_sp_forward.end(); ++i) {
-            fprintf("%f,", *i);
+            fprintf(file, "%f,", *i);
         }
-        fprintf("\n");
+        fprintf(file, "\n");
+        
+        // power thresholds
+        fprintf(file, "%f,%f\n", g_pow0_threshold, g_pow1_threshold);
         
         // bout counts
-        fprintf("%f,%f,%f\n", num_bouts_rightward, num_bouts_leftward, num_bouts_forward);
+        fprintf(file, "%d,%d,%d\n", num_bouts_rightward, num_bouts_leftward, num_bouts_forward);
         
         // bias and scale
-        fprintf("%f,%f", g_bias, g_scale);
+        fprintf(file, "%f,%f", g_bias, g_scale);
         
         fclose(file);
     }
@@ -763,11 +766,13 @@ int main(int argc, char** argv) {
     
     // second game loop in closed-loop
     if (exp_type == CLOSED_LOOP_OMR || exp_type == CLOSED_LOOP_PREY) {
+        
         // for the purposes of closed-loop, analyze power
+        getPowerThreshold();
+        getPowerCoeffs(true); // true to save the analysis, false otherwise
+        
         g_not_done = true;
         g_total_elasped = 0;
-        getPowerThreshold();
-        getPowerCoeffs();
         g_updateFunc = &updateClosedLoopOMR;
         g_drawFunc = &drawClosedLoopOMR;
     
