@@ -576,11 +576,11 @@ void updateOpenLoopPrey() {
 
 void updateOpenLoopOMR() {
     if (g_elapsed_in_trial <= g_trial_duration) {
+        
         // trial is not done yet
         float coeff = (g_curr_mode == 0) ? -1 : 1;
         g_linear.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
         g_rotating.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
-        
         g_elapsed_in_trial += g_dt;
         
         if (!g_serial_up) {
@@ -588,7 +588,10 @@ void updateOpenLoopOMR() {
             g_serial_up = true;
         }
         
+        getSerialData();
+        
     } else if (g_elapsed_in_trial <= g_trial_duration + 10) {
+        
         // inter-trial period (10 s)
         g_elapsed_in_trial += g_dt;
         
@@ -753,7 +756,8 @@ int main(int argc, char** argv) {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         g_drawFunc();
-        getSerialData();
+        // getSerialData(); moved to update function since we only want data
+        // when the stimulus is moving ...
         
         if (g_total_elasped > 10) {
             recordPower();
