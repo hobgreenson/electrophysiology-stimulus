@@ -589,6 +589,7 @@ void updateOpenLoopOMR() {
         }
         
         getSerialData();
+        recordPower();
         
     } else if (g_elapsed_in_trial <= g_trial_duration + 10) {
         
@@ -756,11 +757,8 @@ int main(int argc, char** argv) {
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
         g_drawFunc();
-        // getSerialData(); moved to update function since we only want data
-        // when the stimulus is moving ...
         
         if (g_total_elasped > 10) {
-            recordPower();
             g_updateFunc();
         }
         
@@ -779,7 +777,8 @@ int main(int argc, char** argv) {
         g_total_elasped = 0;
         g_updateFunc = &updateClosedLoopOMR;
         g_drawFunc = &drawClosedLoopOMR;
-    
+        
+        printf("beginning closed-loop stimulus\n");
         while (g_not_done && !glfwWindowShouldClose(window)) {
             // game loop
             curr_sec = glfwGetTime();
