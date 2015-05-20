@@ -28,6 +28,7 @@ void (*g_updateFunc)(); // points to the appropriate update function
 
 // sequences of speeds, sizes and directions for prey and omr experiments
 Protocol g_protocol;
+Protocol g_calibration_protocol;
 
 // meshes for experiments (sets of vertices, colors and data for drawing shapes.
 // constructor arguments indicate which shaders to use with a mesh
@@ -75,6 +76,7 @@ float g_total_vel = 0;
 
 std::vector<float> g_fish_vel_record;
 std::vector<float> g_stim_vel_record;
+std::vector<float> g_total_vel_record;
 
 // timing and state variables for updating the graphics
 double g_dt = 0;
@@ -83,6 +85,7 @@ double g_elapsed_in_trial = 0;
 double g_trial_duration = 0;
 
 int g_curr_mode = -1;
+float g_curr_frequency = -1;
 float g_curr_speed = -1;
 float g_curr_size = -1;
 bool g_not_done = true;
@@ -220,6 +223,29 @@ void recordPower() {
         default:
             break;
     }
+}
+
+void recordVelocity() {
+    g_stim_vel_record.push_back(g_stim_vel);
+    g_fish_vel_record.push_back(g_fish_vel);
+    g_total_vel_record.push_back(g_total_vel);
+}
+
+void saveVelocity() {
+    FILE* file = fopen("./VELOCITYrecord", "w");
+    std::vector<float>::iterator i;
+    for (i = g_stim_vel_record.begin(); i != g_stim_vel_record.end(); ++i) {
+        fprintf(file, "%f,", *i);
+    }
+    fprintf(file, "\n");
+    for (i = g_fish_vel_record.begin(); i != g_fish_vel_record.end(); ++i) {
+        fprintf(file, "%f,", *i);
+    }
+    fprintf(file, "\n");
+    for (i = g_total_vel_record.begin(); i != g_total_vel_record.end(); ++i) {
+        fprintf(file, "%f,", *i);
+    }
+    fclose(file);
 }
 
 void getPowerThreshold() {
@@ -574,7 +600,48 @@ void updateOpenLoopPrey() {
     }
 }
 
-void updateOpenLoopOMR() {
+void updateOpenLoopStepOMR() {
+    if (g_elapsed_in_trial <= g_trial_duration) {
+        
+        // trial is not done yet
+        float coeff = (g_curr_mode == 0) ? -1 : 1;
+        g_linear.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
+        g_rotating.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
+        g_elapsed_in_trial += g_dt;
+        
+        if (!g_serial_up) {
+            g_chan.write(&g_msg, 1);
+            g_serial_up = true;
+        }
+        
+    } else if (g_elapsed_in_trial <= g_trial_duration + 10) {
+        
+        // inter-trial period (10 s)
+        g_elapsed_in_trial += g_dt;
+        
+        if (g_serial_up) {
+            g_chan.write(&g_msg, 1);
+            g_serial_up = false;
+        }
+        
+    } else {
+        
+        g_curr_speed = g_protocol.nextSpeed();
+        g_curr_mode = g_protocol.nextMode();
+        
+        if (g_curr_speed < 0 || g_curr_mode < 0) {
+            // end of protocol
+            g_not_done = false;
+        } else {
+            // start a new trial
+            g_elapsed_in_trial = 0;
+            g_chan.write(&g_msg, 1);
+            g_serial_up = true;
+        }
+    }
+}
+
+void updateCalibrationStepOMR() {
     if (g_elapsed_in_trial <= g_trial_duration) {
         
         // trial is not done yet
@@ -600,10 +667,11 @@ void updateOpenLoopOMR() {
             g_chan.write(&g_msg, 1);
             g_serial_up = false;
         }
+        
     } else {
         
-        g_curr_speed = g_protocol.nextSpeed();
-        g_curr_mode = g_protocol.nextMode();
+        g_curr_speed = g_calibration_protocol.nextSpeed();
+        g_curr_mode = g_calibration_protocol.nextMode();
         
         if (g_curr_speed < 0 || g_curr_mode < 0) {
             // end of protocol
@@ -617,8 +685,50 @@ void updateOpenLoopOMR() {
     }
 }
 
-void updateClosedLoopOMR() {
-    
+void updateSineClosedLoopOMR() {
+    if (g_elapsed_in_trial <= g_trial_duration) {
+        
+        // trial is not done yet
+        getSerialData();
+        g_stim_vel = 10 * sin(2 * PI * g_curr_frequency * g_elapsed_in_trial);
+        getFishVel();
+        g_total_vel = g_stim_vel - g_fish_vel;
+        
+        recordVelocity();
+        
+        g_rotating.translateXmod(g_total_vel * g_dt, SCREEN_WIDTH_GL);
+        g_elapsed_in_trial += g_dt;
+        
+        if (!g_serial_up) {
+            g_chan.write(&g_msg, 1);
+            g_serial_up = true;
+        }
+        
+    } else if (g_elapsed_in_trial <= g_trial_duration + 10) {
+        
+        // inter-trial period (10 s)
+        g_elapsed_in_trial += g_dt;
+        
+        if (g_serial_up) {
+            g_chan.write(&g_msg, 1);
+            g_serial_up = false;
+        }
+        
+    } else {
+        
+        g_curr_frequency = g_protocol.nextFrequency();
+        
+        if (g_curr_frequency < 0) {
+            // end of protocol
+            g_not_done = false;
+            
+        } else {
+            // start a new trial
+            g_elapsed_in_trial = 0;
+            g_chan.write(&g_msg, 1);
+            g_serial_up = true;
+        }
+    }
 }
 
 void setupExperiment(int type, char* path) {
@@ -636,12 +746,12 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_protocol.createOpenLoopStepOMR(path);
+            g_protocol.createOpenLoopStepOMR(true, path);
             g_curr_speed = g_protocol.nextSpeed();
             g_curr_mode = g_protocol.nextMode();
             g_trial_duration = 10;
             
-            g_updateFunc = &updateOpenLoopOMR;
+            g_updateFunc = &updateOpenLoopStepOMR;
             g_drawFunc = &drawOpenLoopOMR;
             
             break;
@@ -659,7 +769,7 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_prey);
             initMeshShaders(&g_prey);
             
-            g_protocol.createOpenLoopPrey(path);
+            g_protocol.createOpenLoopPrey(true, path);
             g_curr_speed = g_protocol.nextSpeed();
             g_curr_size = g_protocol.nextSize();
             g_prey.scaleXY(g_curr_size);
@@ -683,12 +793,13 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_protocol.createShortOpenLoopStepOMR(path);
-            g_curr_speed = g_protocol.nextSpeed();
-            g_curr_mode = g_protocol.nextMode();
+            g_calibration_protocol.createShortOpenLoopStepOMR(false, path);
+            g_protocol.createSineClosedLoopOMR(true, path);
+            g_curr_speed = g_calibration_protocol.nextSpeed();
+            g_curr_mode = g_calibration_protocol.nextMode();
             g_trial_duration = 10;
             
-            g_updateFunc = &updateOpenLoopOMR;
+            g_updateFunc = &updateCalibrationStepOMR;
             g_drawFunc = &drawOpenLoopOMR;
 
             break;
@@ -775,7 +886,8 @@ int main(int argc, char** argv) {
         
         g_not_done = true;
         g_total_elasped = 0;
-        g_updateFunc = &updateClosedLoopOMR;
+        g_curr_frequency = g_protocol.nextFrequency();
+        g_updateFunc = &updateSineClosedLoopOMR;
         g_drawFunc = &drawClosedLoopOMR;
         
         printf("beginning closed-loop stimulus\n");
@@ -789,8 +901,6 @@ int main(int argc, char** argv) {
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         
             g_drawFunc();
-            getSerialData();
-            getFishVel();
             g_updateFunc();
         
             glfwSwapBuffers(window);

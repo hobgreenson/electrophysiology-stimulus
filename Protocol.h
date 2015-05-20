@@ -21,10 +21,14 @@ public:
     
     int experiment_type_;
     
-    void createOpenLoopStepOMR(char* path);
-    void createShortOpenLoopStepOMR(char* path);
-    void createOpenLoopPrey(char* path);
+    void createOpenLoopStepOMR(bool saveit, char* path);
+    void createShortOpenLoopStepOMR(bool saveit, char* path);
     
+    void createSineClosedLoopOMR(bool saveit, char* path);
+    
+    void createOpenLoopPrey(bool saveit, char* path);
+    
+    float nextFrequency();
     float nextSize();
     float nextSpeed();
     int nextMode();
@@ -34,14 +38,16 @@ public:
     float speedToGL(int speed);
     
 private:
+    float* frequency_array_;
     int* size_array_;
     int* speed_array_;
     int* mode_array_;
+    int frequency_index_;
     int size_index_;
     int speed_index_;
     int mode_index_;
     int length_;
-    void shuffle();
+    template <typename T> void shuffle(T* x);
     template <typename T> void swap(T* a, T* b);
 };
 
