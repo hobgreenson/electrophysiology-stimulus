@@ -365,10 +365,31 @@ void getPowerCoeffs(bool saveit) {
     }
     
     // finally find coefficients
-    g_bias = std::accumulate(dp_forward.begin(), dp_forward.end(), 0) / num_bouts_forward;
-    float c_right = std::accumulate(dp_rightward.begin(), dp_rightward.end(), 0) / num_bouts_rightward;
-    float c_left = std::accumulate(dp_leftward.begin(), dp_leftward.end(), 0) / num_bouts_leftward;
-    g_scale = 39.0 * 2 / (c_right + c_left);
+    float c_right, c_left;
+    
+    if (num_bouts_forward > 0) {
+        g_bias = std::accumulate(dp_forward.begin(), dp_forward.end(), 0) / num_bouts_forward;
+    } else {
+        g_bias = 0;
+    }
+    
+    if (num_bouts_rightward > 0) {
+        c_right = std::accumulate(dp_rightward.begin(), dp_rightward.end(), 0) / num_bouts_rightward;
+    } else {
+        c_right = 0;
+    }
+    
+    if (num_bouts_leftward > 0) {
+        c_left = std::accumulate(dp_leftward.begin(), dp_leftward.end(), 0) / num_bouts_leftward;
+    } else {
+        c_left = 0;
+    }
+    
+    if ((c_right + c_left) > 0) {
+        g_scale = 39.0 * 2 / (c_right + c_left);
+    } else {
+        g_scale = 0;
+    }
     
     // save computations if desired
     if (saveit) {
@@ -556,6 +577,9 @@ void drawClosedLoopOMR() {
 }
 
 /*********** Experiment set-up and update ************************/
+float velToGL(float vel) {
+    return SCREEN_WIDTH_GL * (vel / SCREEN_WIDTH_DEG);
+}
 
 void updateOpenLoopPrey() {
     if (g_elapsed_in_trial <= g_trial_duration) {
@@ -650,10 +674,10 @@ void updateCalibrationStepOMR() {
         g_rotating.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
         g_elapsed_in_trial += g_dt;
         
-        if (!g_serial_up) {
+        /*if (!g_serial_up) {
             g_chan.write(&g_msg, 1);
             g_serial_up = true;
-        }
+        }*/
         
         getSerialData();
         recordPower();
@@ -663,10 +687,10 @@ void updateCalibrationStepOMR() {
         // inter-trial period (10 s)
         g_elapsed_in_trial += g_dt;
         
-        if (g_serial_up) {
+        /*if (g_serial_up) {
             g_chan.write(&g_msg, 1);
             g_serial_up = false;
-        }
+        }*/
         
     } else {
         
@@ -679,8 +703,8 @@ void updateCalibrationStepOMR() {
         } else {
             // start a new trial
             g_elapsed_in_trial = 0;
-            g_chan.write(&g_msg, 1);
-            g_serial_up = true;
+            //g_chan.write(&g_msg, 1);
+            //g_serial_up = true;
         }
     }
 }
@@ -696,23 +720,28 @@ void updateSineClosedLoopOMR() {
         
         recordVelocity();
         
-        g_rotating.translateXmod(g_total_vel * g_dt, SCREEN_WIDTH_GL);
+        g_rotating.translateXmod(velToGL(g_total_vel) * g_dt, SCREEN_WIDTH_GL);
         g_elapsed_in_trial += g_dt;
         
-        if (!g_serial_up) {
+        /*if (!g_serial_up) {
             g_chan.write(&g_msg, 1);
             g_serial_up = true;
-        }
+        }*/
         
     } else if (g_elapsed_in_trial <= g_trial_duration + 10) {
         
         // inter-trial period (10 s)
         g_elapsed_in_trial += g_dt;
         
-        if (g_serial_up) {
+        g_stim_vel = 0;
+        g_fish_vel = 0;
+        g_total_vel = 0;
+        recordVelocity();
+        
+        /*if (g_serial_up) {
             g_chan.write(&g_msg, 1);
             g_serial_up = false;
-        }
+        }*/
         
     } else {
         
@@ -725,8 +754,8 @@ void updateSineClosedLoopOMR() {
         } else {
             // start a new trial
             g_elapsed_in_trial = 0;
-            g_chan.write(&g_msg, 1);
-            g_serial_up = true;
+            //g_chan.write(&g_msg, 1);
+            //g_serial_up = true;
         }
     }
 }
@@ -886,6 +915,7 @@ int main(int argc, char** argv) {
         
         g_not_done = true;
         g_total_elasped = 0;
+        
         g_curr_frequency = g_protocol.nextFrequency();
         g_updateFunc = &updateSineClosedLoopOMR;
         g_drawFunc = &drawClosedLoopOMR;
@@ -907,6 +937,8 @@ int main(int argc, char** argv) {
             glfwPollEvents();
         }
     }
+    
+    saveVelocity();
     
     g_chan.close();
     glfwDestroyWindow(window);
