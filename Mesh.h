@@ -50,6 +50,10 @@ public:
     void makeVerticesCircle(float radius, float cx, float cy);
     void makeIndicesCircle();
     
+    void horzGrating(int periods, GLubyte clevel);
+    void makeHorzGratingVertices(int periods, GLubyte clevel);
+    void makeHorzGratingIndices(int periods);
+    
     void rotatingGrating(int periods);
     void makeRotatingGratingVertices(int periods);
     void makeRotatingGratingIndices(int periods);
@@ -66,6 +70,7 @@ public:
     void translateX(double dx);
     void translateXmod(double dx, double n);
     void translateY(double dy);
+    void translateYmod(double dy, double n);
     void translateZ(double dz);
     void centerXY(double x, double y);
     void scaleX(double da);
