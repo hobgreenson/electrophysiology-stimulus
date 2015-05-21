@@ -22,10 +22,9 @@ public:
     int experiment_type_;
     
     void createOpenLoopStepOMR(bool saveit, char* path);
+    void createClosedLoopStepOMR(bool saveit, char* path);
     void createShortOpenLoopStepOMR(bool saveit, char* path);
-    
     void createSineClosedLoopOMR(bool saveit, char* path);
-    
     void createOpenLoopPrey(bool saveit, char* path);
     
     float nextFrequency();
@@ -40,13 +39,15 @@ public:
 private:
     float* frequency_array_;
     int* size_array_;
-    int* speed_array_;
+    float* speed_array_;
     int* mode_array_;
+    int length_;
+    
     int frequency_index_;
     int size_index_;
     int speed_index_;
     int mode_index_;
-    int length_;
+    
     template <typename T> void shuffle(T* x);
     template <typename T> void swap(T* a, T* b);
 };

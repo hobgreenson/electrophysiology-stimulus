@@ -583,6 +583,7 @@ float velToGL(float vel) {
 
 void updateOpenLoopPrey() {
     if (g_elapsed_in_trial <= g_trial_duration) {
+        
         // trial is not done yet
         g_prey.translateX(-g_curr_speed * g_dt);
         g_elapsed_in_trial += g_dt;
@@ -629,8 +630,8 @@ void updateOpenLoopStepOMR() {
         
         // trial is not done yet
         float coeff = (g_curr_mode == 0) ? -1 : 1;
-        g_linear.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
-        g_rotating.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
+        g_linear.translateXmod(coeff * velToGL(g_curr_speed) * g_dt, SCREEN_WIDTH_GL);
+        g_rotating.translateXmod(coeff * velToGL(g_curr_speed) * g_dt, SCREEN_WIDTH_GL);
         g_elapsed_in_trial += g_dt;
         
         if (!g_serial_up) {
@@ -665,13 +666,66 @@ void updateOpenLoopStepOMR() {
     }
 }
 
+void updateClosedLoopStepOMR() {
+    if (g_elapsed_in_trial <= g_trial_duration) {
+        
+        // trial is not done yet
+        float coeff = (g_curr_mode == 0) ? -1 : 1;
+        getSerialData();
+        getFishVel();
+        g_stim_vel = coeff * g_curr_speed;
+        g_total_vel = g_stim_vel - g_fish_vel;
+        
+        recordVelocity();
+        
+        g_rotating.translateXmod(velToGL(g_total_vel) * g_dt, SCREEN_WIDTH_GL);
+        g_elapsed_in_trial += g_dt;
+        
+        /*if (!g_serial_up) {
+            g_chan.write(&g_msg, 1);
+            g_serial_up = true;
+        }*/
+        
+    } else if (g_elapsed_in_trial <= g_trial_duration + 10) {
+        
+        // inter-trial period (10 s)
+        g_elapsed_in_trial += g_dt;
+        
+        g_stim_vel = 0;
+        g_fish_vel = 0;
+        g_total_vel = 0;
+        recordVelocity();
+        
+        /*if (g_serial_up) {
+            g_chan.write(&g_msg, 1);
+            g_serial_up = false;
+        }*/
+        
+    } else {
+        
+        g_curr_speed = g_protocol.nextSpeed();
+        g_curr_mode = g_protocol.nextMode();
+        
+        if (g_curr_speed < 0 || g_curr_mode < 0) {
+            // end of protocol
+            g_not_done = false;
+            
+        } else {
+            // start a new trial
+            g_elapsed_in_trial = 0;
+            //g_chan.write(&g_msg, 1);
+            //g_serial_up = true;
+        }
+    }
+}
+
 void updateCalibrationStepOMR() {
     if (g_elapsed_in_trial <= g_trial_duration) {
         
         // trial is not done yet
         float coeff = (g_curr_mode == 0) ? -1 : 1;
-        g_linear.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
-        g_rotating.translateXmod(coeff * g_curr_speed * g_dt, SCREEN_WIDTH_GL);
+        g_linear.translateXmod(coeff * velToGL(g_curr_speed) * g_dt, SCREEN_WIDTH_GL);
+        g_rotating.translateXmod(coeff * velToGL(g_curr_speed) * g_dt, SCREEN_WIDTH_GL);
         g_elapsed_in_trial += g_dt;
         
         /*if (!g_serial_up) {
@@ -823,7 +877,7 @@ void setupExperiment(int type, char* path) {
             initMeshShaders(&g_linear);
             
             g_calibration_protocol.createShortOpenLoopStepOMR(false, path);
-            g_protocol.createSineClosedLoopOMR(true, path);
+            g_protocol.createClosedLoopStepOMR(true, path);
             g_curr_speed = g_calibration_protocol.nextSpeed();
             g_curr_mode = g_calibration_protocol.nextMode();
             g_trial_duration = 10;
@@ -917,7 +971,7 @@ int main(int argc, char** argv) {
         g_total_elasped = 0;
         
         g_curr_frequency = g_protocol.nextFrequency();
-        g_updateFunc = &updateSineClosedLoopOMR;
+        g_updateFunc = &updateClosedLoopStepOMR;
         g_drawFunc = &drawClosedLoopOMR;
         
         printf("beginning closed-loop stimulus\n");

@@ -15,13 +15,14 @@ Protocol::~Protocol()
 }
 
 void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
-    int speed_set[4] = {4, 10, 40, 80};
+    float speed_set[4] = {4, 10, 40, 80};
     int mode_set[3] = {0, 1, 2};
     length_ = 3 * 4 * 5;
     frequency_array_ = (float*) malloc(length_ * sizeof(int));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
-    speed_array_ = (int*) malloc(length_ * sizeof(int));
+    speed_array_ = (float*) malloc(length_ * sizeof(float));
     size_array_ = (int*) malloc(length_ * sizeof(int));
+    
     int arr_i = 0;
     for(int i = 0; i < 4; i++)
     {
@@ -49,23 +50,66 @@ void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
         }
         fprintf(file, "\n");
         for (int i = 0; i < length_; ++i) {
-            fprintf(file, "%d ", speed_array_[i]);
+            fprintf(file, "%f ", speed_array_[i]);
+        }
+        fclose(file);
+    }
+}
+
+void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
+    float speed_set[4] = {4, 10, 40, 80};
+    int mode_set[2] = {0, 1};
+    length_ = 2 * 4 * 5;
+    
+    frequency_array_ = (float*) malloc(length_ * sizeof(int));
+    mode_array_ = (int*) malloc(length_ * sizeof(int));
+    speed_array_ = (float*) malloc(length_ * sizeof(float));
+    size_array_ = (int*) malloc(length_ * sizeof(int));
+    
+    int arr_i = 0;
+    for(int i = 0; i < 4; i++)
+    {
+        int speed = speed_set[i];
+        for(int j = 0; j < 2; j++)
+        {
+            int mode = mode_set[j];
+            for(int k = 0; k < 5; k++)
+            {
+                mode_array_[arr_i + k] = mode;
+                speed_array_[arr_i + k] = speed;
+            }
+            arr_i += 5;
+        }
+    }
+    
+    srand(time(NULL));
+    shuffle(mode_array_);
+    shuffle(speed_array_);
+    
+    if (saveit) {
+        FILE* file = fopen(path, "w");
+        for (int i = 0; i < length_; ++i) {
+            fprintf(file, "%d ", mode_array_[i]);
+        }
+        fprintf(file, "\n");
+        for (int i = 0; i < length_; ++i) {
+            fprintf(file, "%f ", speed_array_[i]);
         }
         fclose(file);
     }
 }
 
 void Protocol::createShortOpenLoopStepOMR(bool saveit, char* path) {
-    int speed_set = 10;
+    float speed_set = 10;
     int mode_set[3] = {0, 1, 2};
     length_ = 3 * 5;
     frequency_array_ = (float*) malloc(length_ * sizeof(int));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
-    speed_array_ = (int*) malloc(length_ * sizeof(int));
+    speed_array_ = (float*) malloc(length_ * sizeof(float));
     size_array_ = (int*) malloc(length_ * sizeof(int));
     
     int arr_i = 0;
-    int speed = speed_set;
+    float speed = speed_set;
     for(int j = 0; j < 3; j++)
     {
         int mode = mode_set[j];
@@ -88,7 +132,7 @@ void Protocol::createShortOpenLoopStepOMR(bool saveit, char* path) {
         }
         fprintf(file, "\n");
         for (int i = 0; i < length_; ++i) {
-            fprintf(file, "%d ", speed_array_[i]);
+            fprintf(file, "%f ", speed_array_[i]);
         }
         fclose(file);
     }
@@ -100,7 +144,7 @@ void Protocol::createSineClosedLoopOMR(bool saveit, char* path) {
     length_ = 5 * reps;
     frequency_array_ = (float*) malloc(length_ * sizeof(float));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
-    speed_array_ = (int*) malloc(length_ * sizeof(int));
+    speed_array_ = (float*) malloc(length_ * sizeof(float));
     size_array_ = (int*) malloc(length_ * sizeof(int));
     
     int arr_i = 0;
@@ -124,18 +168,18 @@ void Protocol::createSineClosedLoopOMR(bool saveit, char* path) {
 }
 
 void Protocol::createOpenLoopPrey(bool saveit, char* path) {
-    int speed_set[5] = {30, 60, 90, 120, 150};
+    float speed_set[5] = {30, 60, 90, 120, 150};
     int size_set[6] = {1, 3, 5, 7, 20, 30};
     length_ = 150; // 5x reps for each speed-size combo
     frequency_array_ = (float*) malloc(length_ * sizeof(int));
     size_array_ = (int*) malloc(length_ * sizeof(int));
-    speed_array_ = (int*) malloc(length_ * sizeof(int));
+    speed_array_ = (float*) malloc(length_ * sizeof(float));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
     
     int arr_i = 0;
     for(int i = 0; i < 5; i++)
     {
-        int speed = speed_set[i];
+        float speed = speed_set[i];
         for(int j = 0; j < 6; j++)
         {
             int size = size_set[j];
@@ -159,7 +203,7 @@ void Protocol::createOpenLoopPrey(bool saveit, char* path) {
         }
         fprintf(file, "\n");
         for (int i = 0; i < length_; ++i) {
-            fprintf(file, "%d ", speed_array_[i]);
+            fprintf(file, "%f ", speed_array_[i]);
         }
         fclose(file);
     }
@@ -187,8 +231,8 @@ float Protocol::sizeToGL(int size) {
 }
 
 float Protocol::nextSpeed() {
-    int speed = (speed_index_ < length_) ? speed_array_[speed_index_++] : -1;
-    return speedToGL(speed);
+    float speed = (speed_index_ < length_) ? speed_array_[speed_index_++] : -1;
+    return speed;
 }
 
 float Protocol::speedToGL(int speed) {
