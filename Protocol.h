@@ -23,7 +23,7 @@ public:
     
     void createOpenLoopStepOMR(bool saveit, char* path);
     void createClosedLoopStepOMR(bool saveit, char* path);
-    void createShortOpenLoopStepOMR(bool saveit, char* path);
+    void createCalibrationOpenLoopStepOMR(bool saveit, char* path);
     void createSineClosedLoopOMR(bool saveit, char* path);
     void createOpenLoopPrey(bool saveit, char* path);
     

@@ -99,10 +99,10 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
     }
 }
 
-void Protocol::createShortOpenLoopStepOMR(bool saveit, char* path) {
+void Protocol::createCalibrationOpenLoopStepOMR(bool saveit, char* path) {
     float speed_set = 10;
     int mode_set[3] = {0, 1, 2};
-    length_ = 3 * 5;
+    length_ = 3 * 10;
     frequency_array_ = (float*) malloc(length_ * sizeof(int));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
     speed_array_ = (float*) malloc(length_ * sizeof(float));
@@ -113,7 +113,7 @@ void Protocol::createShortOpenLoopStepOMR(bool saveit, char* path) {
     for(int j = 0; j < 3; j++)
     {
         int mode = mode_set[j];
-        for(int k = 0; k < 5; k++)
+        for(int k = 0; k < 10; k++)
         {
             mode_array_[arr_i + k] = mode;
             speed_array_[arr_i + k] = speed;
