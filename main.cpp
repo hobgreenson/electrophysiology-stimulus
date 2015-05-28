@@ -13,7 +13,8 @@
 #include "Protocol.h"
 
 #define PI 3.14159265359
-#define SCREEN_WIDTH_GL 0.7 //0.68
+#define SCREEN_WIDTH_GL 0.7
+#define SCREEN_WIDTH_DEG 200
 #define SCREEN_EDGE_GL 0.35
 
 #define OPEN_LOOP_OMR 0
@@ -39,11 +40,11 @@ Mesh g_linear("./linear_grating.vert", "./boring.frag");
 //Mesh g_horz("./horzGrating.vert", "./boring.frag");
 
 // serial communication with arduino boards for synchronization and closed loop
-serial::Serial g_chan("/dev/ttyACM0", // closed-loop port
+serial::Serial g_chan("/dev/ttyACM1", // closed-loop port
                       8 * 115200, // baud rate
                       serial::Timeout::simpleTimeout(1000));
-serial::Serial g_sync_chan("/dev/ttyACM1", // synchonization port
-                           8 * 115200, // baud rate
+serial::Serial g_sync_chan("/dev/ttyACM0", // synchonization port
+                           4 * 115200, // baud rate
                            serial::Timeout::simpleTimeout(1000));
 const uint8_t g_msg = 'a';
 bool g_serial_up = false;
@@ -848,7 +849,7 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_calibration_protocol.createCalibrationOpenLoopStepOMR(false, path);
+            g_calibration_protocol.createOpenLoopStepOMR(false, path);
             g_protocol.createClosedLoopStepOMR(true, path);
             g_curr_speed = g_calibration_protocol.nextSpeed();
             g_curr_mode = g_calibration_protocol.nextMode();

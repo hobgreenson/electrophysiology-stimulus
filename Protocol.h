@@ -6,7 +6,7 @@
 #include <cstdio>
 
 #define SCREEN_WIDTH_GL 0.7 //0.68
-#define SCREEN_WIDTH_DEG 203
+#define SCREEN_WIDTH_DEG 200
 
 #define OPEN_LOOP_OMR 0
 #define OPEN_LOOP_PREY 1
@@ -23,8 +23,9 @@ public:
     
     void createOpenLoopStepOMR(bool saveit, char* path);
     void createClosedLoopStepOMR(bool saveit, char* path);
-    void createCalibrationOpenLoopStepOMR(bool saveit, char* path);
+    
     void createSineClosedLoopOMR(bool saveit, char* path);
+    
     void createOpenLoopPrey(bool saveit, char* path);
     
     float nextFrequency();

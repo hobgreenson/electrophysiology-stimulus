@@ -15,27 +15,25 @@ Protocol::~Protocol()
 }
 
 void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
-    float speed_set[4] = {4, 10, 40, 80};
-    int mode_set[3] = {0, 1, 2};
-    length_ = 3 * 4 * 5;
+    
+    const int n_speeds = 5, n_modes = 3, n_reps = 5;
+    float speed_set[n_speeds] = {2, 5, 10, 20, 40};
+    int mode_set[n_modes] = {0, 1, 2};
+    
+    length_ = n_modes * n_speeds * n_reps;
     frequency_array_ = (float*) malloc(length_ * sizeof(int));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
     speed_array_ = (float*) malloc(length_ * sizeof(float));
     size_array_ = (int*) malloc(length_ * sizeof(int));
     
     int arr_i = 0;
-    for(int i = 0; i < 4; i++)
-    {
-        int speed = speed_set[i];
-        for(int j = 0; j < 3; j++)
-        {
-            int mode = mode_set[j];
-            for(int k = 0; k < 5; k++)
-            {
-                mode_array_[arr_i + k] = mode;
-                speed_array_[arr_i + k] = speed;
+    for(int i = 0; i < n_speeds; i++) {
+        for(int j = 0; j < n_modes; j++) {
+            for(int k = 0; k < n_reps; k++) {
+                mode_array_[arr_i + k] = mode_set[j];
+                speed_array_[arr_i + k] = speed_set[i];
             }
-            arr_i += 5;
+            arr_i += n_reps;
         }
     }
     
@@ -80,45 +78,6 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
             }
             arr_i += 5;
         }
-    }
-    
-    srand(time(NULL));
-    shuffle(mode_array_);
-    shuffle(speed_array_);
-    
-    if (saveit) {
-        FILE* file = fopen(path, "w");
-        for (int i = 0; i < length_; ++i) {
-            fprintf(file, "%d ", mode_array_[i]);
-        }
-        fprintf(file, "\n");
-        for (int i = 0; i < length_; ++i) {
-            fprintf(file, "%f ", speed_array_[i]);
-        }
-        fclose(file);
-    }
-}
-
-void Protocol::createCalibrationOpenLoopStepOMR(bool saveit, char* path) {
-    float speed_set = 10;
-    int mode_set[3] = {0, 1, 2};
-    length_ = 3 * 10;
-    frequency_array_ = (float*) malloc(length_ * sizeof(int));
-    mode_array_ = (int*) malloc(length_ * sizeof(int));
-    speed_array_ = (float*) malloc(length_ * sizeof(float));
-    size_array_ = (int*) malloc(length_ * sizeof(int));
-    
-    int arr_i = 0;
-    float speed = speed_set;
-    for(int j = 0; j < 3; j++)
-    {
-        int mode = mode_set[j];
-        for(int k = 0; k < 10; k++)
-        {
-            mode_array_[arr_i + k] = mode;
-            speed_array_[arr_i + k] = speed;
-        }
-        arr_i += 5;
     }
     
     srand(time(NULL));
