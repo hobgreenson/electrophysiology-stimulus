@@ -6,6 +6,7 @@
 #include <boost/circular_buffer.hpp>
 #include <cstdio>
 #include <cmath>
+#include <cstring>
 
 #include "Vertex2D.h"
 #include "load_shader.h"
@@ -280,8 +281,10 @@ void recordVelocity() {
     g_total_vel_record.push_back(g_total_vel);
 }
 
-void saveVelocity() {
-    FILE* file = fopen("./VELOCITYrecord", "w");
+void saveVelocity(char* path) {
+    //char label[] = "closed_loop_velocity_";
+    //strcat(label, path);
+    FILE* file = fopen("closed_loop_velocity", "w");
     std::vector<float>::iterator i;
     for (i = g_stim_vel_record.begin(); i != g_stim_vel_record.end(); ++i) {
         fprintf(file, "%f,", *i);
@@ -325,7 +328,7 @@ void openLoopPower(std::vector<float>& x, std::vector<float>& p) {
     }
 }
 
-void prepareForClosedLoop(bool saveit) {
+void prepareForClosedLoop(char* path, bool saveit) {
     
     // first scale and de-mean raw data
     float rightward_m, rightward_s;
@@ -398,7 +401,7 @@ void prepareForClosedLoop(bool saveit) {
     float total_heading_forward = std::accumulate(dp_forward.begin(), dp_forward.end(), 0);
     
     // find coeffs and bias
-    float T = 100.0; // total time (sec) for each stimulus type
+    float T = 150.0; // total time (sec) for each stimulus type
     float E = 40.0; // expected average angular velocity during turns
     float c_right = total_heading_rightward / T;
     float c_left = total_heading_leftward / T;
@@ -407,85 +410,176 @@ void prepareForClosedLoop(bool saveit) {
     
     // save data if desired
     if (saveit) {
-        FILE* file = fopen("CalibrationRecord.txt", "w");
+        //char label[] = "calibration_";
+        //strcat(label, path);
+        FILE* file = fopen("calibration_data", "w");
         
         std::vector<float>::iterator i;
         
         // raw data
+        int j = 0;
         for (i = g_data0_rightward.begin(); i != g_data0_rightward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = g_data1_rightward.begin(); i != g_data1_rightward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = g_data0_leftward.begin(); i != g_data0_leftward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = g_data1_leftward.begin(); i != g_data1_leftward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = g_data0_forward.begin(); i != g_data0_forward.end(); ++i) {
-            fprintf(file, "%f,", *i);
-        }
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }        }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = g_data1_forward.begin(); i != g_data1_forward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
         // power
+        j = 0;
         for (i = pow0_rightward.begin(); i != pow0_rightward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = pow1_rightward.begin(); i != pow1_rightward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = pow0_leftward.begin(); i != pow0_leftward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = pow1_leftward.begin(); i != pow1_leftward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = pow0_forward.begin(); i != pow0_forward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = pow1_forward.begin(); i != pow1_forward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
         // power difference
+        j = 0;
         for (i = dp_rightward.begin(); i != dp_rightward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = dp_leftward.begin(); i != dp_leftward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
         
+        j = 0;
         for (i = dp_forward.begin(); i != dp_forward.end(); ++i) {
-            fprintf(file, "%f,", *i);
+            if (j == 0) {
+                fprintf(file, "%f", *i);
+                j = 1;
+            } else {
+                fprintf(file, ",%f", *i);
+            }
         }
         fprintf(file, "\n");
     
@@ -790,6 +884,7 @@ void updateCalibrationStepOMR() {
 void setupExperiment(int type, char* path) {
     switch (type) {
         case OPEN_LOOP_OMR:
+        {
             g_rotating.rotatingGrating(8);
             g_rotating.scaleX(SCREEN_EDGE_GL);
             g_rotating.scaleY(0.3);
@@ -802,7 +897,10 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
+            //char label[] = "open_loop_protocol_";
+            //strcat(label, path);
             g_protocol.createOpenLoopStepOMR(true, path);
+            
             g_curr_speed = g_protocol.nextSpeed();
             g_curr_mode = g_protocol.nextMode();
             g_trial_duration = 10;
@@ -811,8 +909,9 @@ void setupExperiment(int type, char* path) {
             g_drawFunc = &drawOpenLoopOMR;
             
             break;
-            
+        }
         case OPEN_LOOP_PREY:
+        {
             g_background.rotatingGrating(8);
             g_background.scaleX(SCREEN_EDGE_GL);
             g_background.scaleY(0.3);
@@ -825,7 +924,10 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_prey);
             initMeshShaders(&g_prey);
             
+            //char label[] = "open_loop_protocol_";
+            //strcat(label, path);
             g_protocol.createOpenLoopPrey(true, path);
+            
             g_curr_speed = g_protocol.nextSpeed();
             g_curr_size = g_protocol.nextSize();
             g_prey.scaleXY(g_curr_size);
@@ -835,8 +937,9 @@ void setupExperiment(int type, char* path) {
             g_drawFunc = &drawOpenLoopPrey;
             
             break;
-            
+        }
         case CLOSED_LOOP_OMR:
+        {
             g_rotating.rotatingGrating(8);
             g_rotating.scaleX(SCREEN_EDGE_GL);
             g_rotating.scaleY(0.3);
@@ -849,8 +952,14 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_calibration_protocol.createOpenLoopStepOMR(false, path);
-            g_protocol.createClosedLoopStepOMR(true, path);
+            //char label1[] = "open_loop_protocol_";
+            //strcat(label1, path);
+            g_calibration_protocol.createOpenLoopStepOMR(true, path);
+            
+            //char label2[] = "closed_loop_protocol_";
+            //strcat(label2, path);
+            g_protocol.createClosedLoopStepOMR(false, path);
+            
             g_curr_speed = g_calibration_protocol.nextSpeed();
             g_curr_mode = g_calibration_protocol.nextMode();
             g_trial_duration = 10;
@@ -859,7 +968,7 @@ void setupExperiment(int type, char* path) {
             g_drawFunc = &drawOpenLoopOMR;
 
             break;
-            
+        }
         case CLOSED_LOOP_PREY:
             break;
             
@@ -938,7 +1047,7 @@ int main(int argc, char** argv) {
     if (exp_type == CLOSED_LOOP_OMR || exp_type == CLOSED_LOOP_PREY) {
         
         // set up closed-loop
-        prepareForClosedLoop(true);
+        prepareForClosedLoop(argv[2], true);
         g_not_done = true;
         g_total_elasped = 0;
         g_updateFunc = &updateClosedLoopStepOMR;
@@ -961,7 +1070,7 @@ int main(int argc, char** argv) {
         }
     }
     
-    saveVelocity();
+    saveVelocity(argv[2]);
     
     g_chan.close();
     g_sync_chan.close();

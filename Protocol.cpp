@@ -3,7 +3,7 @@
 Protocol::Protocol()
     : size_index_(0), speed_index_(0), mode_index_(0)
 {
-    
+    srand(time(NULL));
 }
 
 Protocol::~Protocol()
@@ -16,7 +16,7 @@ Protocol::~Protocol()
 
 void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
     
-    const int n_speeds = 5, n_modes = 3, n_reps = 5;
+    const int n_speeds = 5, n_modes = 3, n_reps = 3;
     float speed_set[n_speeds] = {2, 5, 10, 20, 40};
     int mode_set[n_modes] = {0, 1, 2};
     
@@ -37,7 +37,6 @@ void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
         }
     }
     
-    srand(time(NULL));
     shuffle(mode_array_);
     shuffle(speed_array_);
     
@@ -80,7 +79,6 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
         }
     }
     
-    srand(time(NULL));
     shuffle(mode_array_);
     shuffle(speed_array_);
     
@@ -114,7 +112,6 @@ void Protocol::createSineClosedLoopOMR(bool saveit, char* path) {
         arr_i += reps;
     }
 
-    srand(time(NULL));
     shuffle(frequency_array_);
     
     if (saveit) {
@@ -151,7 +148,6 @@ void Protocol::createOpenLoopPrey(bool saveit, char* path) {
         }
     }
     
-    srand(time(NULL));
     shuffle(size_array_);
     shuffle(speed_array_);
     
