@@ -116,56 +116,44 @@ float mean_vec(std::vector<float>& buffer) {
     
     // computes mean value of a float vector
     
-    float sum = std::accumulate(buffer.begin(), buffer.end(), 0);
+    float sum = std::accumulate(buffer.begin(), buffer.end(), 0.0);
     return sum / buffer.size();
-}
-
-float std_dev_ring(boost::circular_buffer<float>& buffer) {
-    
-    // computes std. deviation of integer data in a ring buffer
-    
-    float M_next, M_prev, S_next = 0, S_prev = 0, R_prev, R_next;
-    int k = 1;
-    boost::circular_buffer<float>::iterator i = buffer.begin();
-    
-    M_prev = M_next = *i;
-    i++;
-    for (; i != buffer.end(); ++i) {
-        k++;
-        R_prev = (*i) - M_prev;
-        R_next = (*i) - M_next;
-        
-        M_next = M_prev + R_prev / k;
-        S_next = S_prev + R_prev * R_next;
-        M_prev = M_next;
-        S_prev = S_next;
-    }
-    
-    return sqrt(S_next / k);
 }
 
 float std_dev_vec(std::vector<float>& buffer) {
     
     // computes std. deviation of float data in a vector
     
-    float M_next, M_prev, S_next = 0, S_prev = 0, R_prev, R_next;
-    int k = 1;
+    float mean = mean_vec(buffer);
     std::vector<float>::iterator i = buffer.begin();
-    
-    M_prev = M_next = *i;
-    i++;
+    float sum = 0;
     for (; i != buffer.end(); ++i) {
-        k++;
-        R_prev = (*i) - M_prev;
-        R_next = (*i) - M_next;
-        
-        M_next = M_prev + R_prev / k;
-        S_next = S_prev + R_prev * R_next;
-        M_prev = M_next;
-        S_prev = S_next;
+        sum += ((*i) - mean) * ((*i) - mean);
     }
     
-    return sqrt(S_next / k);
+    return sqrt(sum / (buffer.size() - 1));
+}
+
+float mean_ring(boost::circular_buffer<float>& buffer) {
+    
+    // computes mean value of a float ring buffer
+    
+    float sum = std::accumulate(buffer.begin(), buffer.end(), 0.0);
+    return sum / buffer.size();
+}
+
+float std_dev_ring(boost::circular_buffer<float>& buffer) {
+    
+    // computes std. deviation of data in a ring buffer
+    
+    float mean = mean_ring(buffer);
+    boost::circular_buffer<float>::iterator i = buffer.begin();
+    float sum = 0;
+    for (; i != buffer.end(); ++i) {
+        sum += ((*i) - mean) * ((*i) - mean);
+    }
+    
+    return sqrt(sum / (buffer.size() - 1));
 }
 
 void getSerialDataOpenLoop() {
