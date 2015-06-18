@@ -584,7 +584,9 @@ void prepareForClosedLoop(char* path, bool saveit) {
         fprintf(file, "\n");
     
         // power thresholds
-        fprintf(file, "%f,%f\n", g_pow0_threshold, g_pow1_threshold);
+        fprintf(file, "%f,%f,%f,%f,%f,%f\n", th_p0_rightward, th_p1_rightward,
+                                             th_p0_leftward, th_p1_leftward,
+                                             th_p0_forward, th_p1_forward);
         
         // bias and scale
         fprintf(file, "%f,%f", g_bias, g_scale);
