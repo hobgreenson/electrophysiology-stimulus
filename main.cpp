@@ -310,9 +310,15 @@ void normalizeVector(std::vector<float>& x, float& mean, float& std) {
 void openLoopPower(std::vector<float>& x, std::vector<float>& p) {
     boost::circular_buffer<float> win(g_buffer_length);
     std::vector<float>::iterator i;
+    int j = 0;
     for (i = x.begin(); i != x.end(); ++i) {
         win.push_back(*i);
-        p.push_back(std_dev_ring(win));
+        if (j < 200) {
+            p.push_back(0.0);
+        } else {
+            p.push_back(std_dev_ring(win));
+        }
+        j++;
     }
 }
 
@@ -357,6 +363,13 @@ void prepareForClosedLoop(char* path, bool saveit) {
     g_pow0_threshold = (th_p0_rightward + th_p0_leftward + th_p0_forward) / 3;
     g_pow1_threshold = (th_p1_rightward + th_p1_leftward + th_p1_forward) / 3;
     
+    printf("th_p0_rightward = %f\n", th_p0_rightward);
+    printf("th_p1_rightward = %f\n", th_p1_rightward);
+    printf("th_p0_leftward = %f\n", th_p0_leftward);
+    printf("th_p1_leftward = %f\n", th_p1_leftward);
+    printf("th_p0_forward = %f\n", th_p0_forward);
+    printf("th_p1_forward = %f\n", th_p1_forward);
+    
     // threshold power
     thresholdVector(pow0_rightward, g_pow0_threshold);
     thresholdVector(pow0_leftward, g_pow0_threshold);
@@ -365,41 +378,37 @@ void prepareForClosedLoop(char* path, bool saveit) {
     thresholdVector(pow1_leftward, g_pow1_threshold);
     thresholdVector(pow1_forward, g_pow1_threshold);
     
+    // get left-right bias coeff
+    float mp0 = mean_vec(pow0_forward);
+    float mp1 = mean_vec(pow1_forward);
+    g_bias = mp1 / mp0;
+    
     // get power difference
     unsigned int i, n;
     std::vector<float> dp_rightward;
     n = mymin(pow0_rightward.size(), pow1_rightward.size());
     for (i = 0; i < n; ++i) {
-        dp_rightward.push_back(pow1_rightward[i] - pow0_rightward[i]);
+        dp_rightward.push_back(pow1_rightward[i] - g_bias * pow0_rightward[i]);
     }
     std::vector<float> dp_leftward;
     n = mymin(pow0_leftward.size(), pow1_leftward.size());
     for (i = 0; i < n; ++i) {
-        dp_leftward.push_back(pow1_leftward[i] - pow0_leftward[i]);
+        dp_leftward.push_back(pow1_leftward[i] - g_bias * pow0_leftward[i]);
     }
     std::vector<float> dp_forward;
     n = mymin(pow0_forward.size(), pow1_forward.size());
     for (i = 0; i < n; ++i) {
-        dp_forward.push_back(pow1_forward[i] - pow0_forward[i]);
+        dp_forward.push_back(pow1_forward[i] - g_bias * pow0_forward[i]);
     }
-
-    // find total heading change for each stimulus direction:
-    float total_heading_rightward = std::accumulate(dp_rightward.begin(), dp_rightward.end(), 0);
-    float total_heading_leftward = std::accumulate(dp_leftward.begin(), dp_leftward.end(), 0);
-    float total_heading_forward = std::accumulate(dp_forward.begin(), dp_forward.end(), 0);
     
-    // find coeffs and bias
-    float T = 150.0; // total time (sec) for each stimulus type
-    float E = 40.0; // expected average angular velocity during turns
-    float c_right = total_heading_rightward / T;
-    float c_left = total_heading_leftward / T;
-    g_scale = 2 * E / (c_right + c_left);
-    g_bias = total_heading_forward / T;
+    // find scale to metric
+    float mdpr = mean_vec(dp_rightward);
+    float mdpl = mean_vec(dp_leftward);
+    g_scale = 80.0 / (fabs(mdpr) + fabs(mdpl)); // deg/pow
     
     // save data if desired
     if (saveit) {
-        //char label[] = "calibration_";
-        //strcat(label, path);
+
         FILE* file = fopen("calibration_data", "w");
         
         std::vector<float>::iterator i;
@@ -575,6 +584,7 @@ void prepareForClosedLoop(char* path, bool saveit) {
         fprintf(file, "%f,%f,%f,%f,%f,%f\n", th_p0_rightward, th_p1_rightward,
                                              th_p0_leftward, th_p1_leftward,
                                              th_p0_forward, th_p1_forward);
+        fprintf(file, "%f,%f\n", g_pow0_threshold, g_pow1_threshold);
         
         // bias and scale
         fprintf(file, "%f,%f", g_bias, g_scale);
@@ -593,8 +603,8 @@ void getFishVel() {
     p1 = (p1 > g_pow1_threshold) ? p1 : 0;
     
     // correct for forward bias and scale data to degrees / s
-    float dp = p1 - p0;
-    g_fish_vel = (fabs(dp) > 0) ? g_scale * (dp - g_bias) : 0;
+    float dp = p1 - g_bias * p0;
+    g_fish_vel = (fabs(dp) > 0) ? g_scale * dp : 0;
 }
 
 /************ rendering ************************/
