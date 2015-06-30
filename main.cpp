@@ -328,14 +328,14 @@ float getScale(std::vector<float>& left, std::vector<float>& right) {
     for (i = right.begin(); i != right.end(); ++i) {
         float val = fabs(*i);
         if (val > 0) {
-            time_swimming_r += val;
+            time_swimming_r++;
         }
     }
     float time_swimming_l = 0.0;
     for (i = left.begin(); i != left.end(); ++i) {
         float val = fabs(*i);
         if (val > 0) {
-            time_swimming_l += val;
+            time_swimming_l++;
         }
     }
     float sr = std::accumulate(right.begin(), right.end(), 0.0);
