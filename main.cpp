@@ -322,6 +322,27 @@ void openLoopPower(std::vector<float>& x, std::vector<float>& p) {
     }
 }
 
+float getScale(std::vector<float>& left, std::vector<float>& right) {
+    std::vector<float>::iterator i;
+    float time_swimming_r = 0.0;
+    for (i = right.begin(); i != right.end(); ++i) {
+        float val = fabs(*i);
+        if (val > 0) {
+            time_swimming_r += val;
+        }
+    }
+    float time_swimming_l = 0.0;
+    for (i = left.begin(); i != left.end(); ++i) {
+        float val = fabs(*i);
+        if (val > 0) {
+            time_swimming_l += val;
+        }
+    }
+    float sr = std::accumulate(right.begin(), right.end(), 0.0);
+    float sl = std::accumulate(left.begin(), left.end(), 0.0);
+    return 40 * (time_swimming_l + time_swimming_r) / (fabs(sl) + fabs(sr));
+}
+
 void prepareForClosedLoop(char* path, bool saveit) {
     
     // first scale and de-mean raw data
@@ -402,9 +423,7 @@ void prepareForClosedLoop(char* path, bool saveit) {
     }
     
     // find scale to metric
-    float mdpr = mean_vec(dp_rightward);
-    float mdpl = mean_vec(dp_leftward);
-    g_scale = 80.0 / (fabs(mdpr) + fabs(mdpl)); // deg/pow
+    g_scale = getScale(dp_leftward, dp_rightward);
     
     // save data if desired
     if (saveit) {
