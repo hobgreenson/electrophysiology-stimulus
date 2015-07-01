@@ -82,9 +82,13 @@ boost::circular_buffer<float> g_data1_ring(g_buffer_length); // raw data
 float g_fish_vel = 0;
 float g_stim_vel = 0;
 float g_total_vel = 0;
+float g_pow0_cl = 0;
+float g_pow1_cl = 0;
 std::vector<float> g_fish_vel_record; // to save
 std::vector<float> g_stim_vel_record; // to save
 std::vector<float> g_total_vel_record; // to save
+std::vector<float> g_pow0_cl_record; // to save
+std::vector<float> g_pow1_cl_record; // to save
 
 // timing and state variables for updating the graphics
 double g_dt = 0;
@@ -267,25 +271,69 @@ void recordVelocity() {
     g_stim_vel_record.push_back(g_stim_vel);
     g_fish_vel_record.push_back(g_fish_vel);
     g_total_vel_record.push_back(g_total_vel);
+    g_pow0_cl_record.push_back(g_pow0_cl);
+    g_pow1_cl_record.push_back(g_pow1_cl);
 }
 
 void saveVelocity(char* path) {
-    //char label[] = "closed_loop_velocity_";
-    //strcat(label, path);
     FILE* file = fopen("closed_loop_velocity", "w");
     std::vector<float>::iterator i;
+    int j = 0;
+    
     for (i = g_stim_vel_record.begin(); i != g_stim_vel_record.end(); ++i) {
-        fprintf(file, "%f,", *i);
+        if (j == 0) {
+            fprintf(file, "%f", *i);
+            j = 1;
+        } else {
+            fprintf(file, ",%f", *i);
+        }
     }
     fprintf(file, "\n");
+    j = 0;
+    
     for (i = g_fish_vel_record.begin(); i != g_fish_vel_record.end(); ++i) {
-        fprintf(file, "%f,", *i);
+        if (j == 0) {
+            fprintf(file, "%f", *i);
+            j = 1;
+        } else {
+            fprintf(file, ",%f", *i);
+        }
     }
     fprintf(file, "\n");
+    j = 0;
+    
     for (i = g_total_vel_record.begin(); i != g_total_vel_record.end(); ++i) {
-        fprintf(file, "%f,", *i);
+        if (j == 0) {
+            fprintf(file, "%f", *i);
+            j = 1;
+        } else {
+            fprintf(file, ",%f", *i);
+        }
     }
     fclose(file);
+    j = 0;
+    
+    for (i = g_pow0_cl_record.begin(); i != g_pow0_cl_record.end(); ++i) {
+        if (j == 0) {
+            fprintf(file, "%f", *i);
+            j = 1;
+        } else {
+            fprintf(file, ",%f", *i);
+        }
+    }
+    fclose(file);
+    j = 0;
+    
+    for (i = g_pow1_cl_record.begin(); i != g_pow1_cl_record.end(); ++i) {
+        if (j == 0) {
+            fprintf(file, "%f", *i);
+            j = 1;
+        } else {
+            fprintf(file, ",%f", *i);
+        }
+    }
+    fclose(file);
+    j = 0;
 }
 
 unsigned int mymin(unsigned int a, unsigned int b) {
@@ -614,16 +662,16 @@ void prepareForClosedLoop(char* path, bool saveit) {
 
 void getFishVel() {
     // compute power of ring buffers
-    float p0 = std_dev_ring(g_data0_ring);
-    float p1 = std_dev_ring(g_data1_ring);
+    g_pow0_cl = std_dev_ring(g_data0_ring);
+    g_pow1_cl = std_dev_ring(g_data1_ring);
     
-    // compute fish velocity from power
-    p0 = (p0 > g_pow0_threshold) ? p0 : 0;
-    p1 = (p1 > g_pow1_threshold) ? p1 : 0;
+    // threshold power
+    g_pow0_cl = (g_pow0_cl > g_pow0_threshold) ? g_pow0_cl : 0;
+    g_pow1_cl = (g_pow1_cl > g_pow1_threshold) ? g_pow1_cl : 0;
     
-    // correct for forward bias and scale data to degrees / s
-    float dp = p1 - g_bias * p0;
-    g_fish_vel = (fabs(dp) > 0) ? g_scale * dp : 0;
+    // correct for forward bias and scale to degrees / s
+    float dp = g_pow1_cl - g_bias * g_pow0_cl;
+    g_fish_vel = g_scale * dp;
 }
 
 /************ rendering ************************/
@@ -916,8 +964,6 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            //char label[] = "open_loop_protocol_";
-            //strcat(label, path);
             g_protocol.createOpenLoopStepOMR(true, path);
             
             g_curr_speed = g_protocol.nextSpeed();
@@ -943,8 +989,6 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_prey);
             initMeshShaders(&g_prey);
             
-            //char label[] = "open_loop_protocol_";
-            //strcat(label, path);
             g_protocol.createOpenLoopPrey(true, path);
             
             g_curr_speed = g_protocol.nextSpeed();
@@ -971,12 +1015,8 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            //char label1[] = "open_loop_protocol_";
-            //strcat(label1, path);
             g_calibration_protocol.createOpenLoopStepOMR(true, path);
             
-            //char label2[] = "closed_loop_protocol_";
-            //strcat(label2, path);
             g_protocol.createClosedLoopStepOMR(false, path);
             
             g_curr_speed = g_calibration_protocol.nextSpeed();
