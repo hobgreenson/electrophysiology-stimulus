@@ -277,10 +277,8 @@ void recordVelocity() {
     g_pow1_cl_record.push_back(g_pow1_cl);
 }
 
-void saveVelocity(char* path) {
-    FILE* file = fopen("closed_loop_velocity", "w");
+void writeVec(FILE* file, std::vector<float>& x) {
     std::vector<float>::iterator i;
-    
     int j = 0;
     for (i = g_stim_vel_record.begin(); i != g_stim_vel_record.end(); ++i) {
         if (j == 0) {
@@ -290,50 +288,25 @@ void saveVelocity(char* path) {
             fprintf(file, ",%f", *i);
         }
     }
+}
+
+void saveVelocity(char* path) {
+    FILE* file = fopen("closed_loop_velocity", "w");
+    std::vector<float>::iterator i;
+    
+    writeVec(file, g_stim_vel_record);
     fprintf(file, "\n");
     
-    j = 0;
-    for (i = g_fish_vel_record.begin(); i != g_fish_vel_record.end(); ++i) {
-        if (j == 0) {
-            fprintf(file, "%f", *i);
-            j = 1;
-        } else {
-            fprintf(file, ",%f", *i);
-        }
-    }
+    writeVec(file, g_fish_vel_record);
     fprintf(file, "\n");
     
-    j = 0;
-    for (i = g_total_vel_record.begin(); i != g_total_vel_record.end(); ++i) {
-        if (j == 0) {
-            fprintf(file, "%f", *i);
-            j = 1;
-        } else {
-            fprintf(file, ",%f", *i);
-        }
-    }
+    writeVec(file, g_total_vel_record);
     fprintf(file, "\n");
     
-    j = 0;
-    for (i = g_pow0_cl_record.begin(); i != g_pow0_cl_record.end(); ++i) {
-        if (j == 0) {
-            fprintf(file, "%f", *i);
-            j = 1;
-        } else {
-            fprintf(file, ",%f", *i);
-        }
-    }
+    writeVec(file, g_pow0_cl_record);
     fprintf(file, "\n");
     
-    j = 0;
-    for (i = g_pow1_cl_record.begin(); i != g_pow1_cl_record.end(); ++i) {
-        if (j == 0) {
-            fprintf(file, "%f", *i);
-            j = 1;
-        } else {
-            fprintf(file, ",%f", *i);
-        }
-    }
+    writeVec(file, g_pow1_cl_record);
     fclose(file);
 }
 
@@ -481,173 +454,40 @@ void prepareForClosedLoop(char* path, bool saveit) {
 
         FILE* file = fopen("calibration_data", "w");
         
-        std::vector<float>::iterator i;
-        
         // raw data
-        int j = 0;
-        for (i = g_data0_rightward.begin(); i != g_data0_rightward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, g_data0_rightward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = g_data1_rightward.begin(); i != g_data1_rightward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, g_data1_rightward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = g_data0_leftward.begin(); i != g_data0_leftward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, g_data0_leftward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = g_data1_leftward.begin(); i != g_data1_leftward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, g_data1_leftward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = g_data0_forward.begin(); i != g_data0_forward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }        }
+        writeVec(file, g_data0_forward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = g_data1_forward.begin(); i != g_data1_forward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, g_data1_forward);
         fprintf(file, "\n");
         
         // power
-        j = 0;
-        for (i = pow0_rightward.begin(); i != pow0_rightward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, pow0_rightward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = pow1_rightward.begin(); i != pow1_rightward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, pow1_rightward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = pow0_leftward.begin(); i != pow0_leftward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, pow0_leftward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = pow1_leftward.begin(); i != pow1_leftward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, pow1_leftward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = pow0_forward.begin(); i != pow0_forward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, pow0_forward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = pow1_forward.begin(); i != pow1_forward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, pow1_forward);
         fprintf(file, "\n");
         
         // power difference
-        j = 0;
-        for (i = dp_rightward.begin(); i != dp_rightward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, dp_rightward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = dp_leftward.begin(); i != dp_leftward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, dp_leftward);
         fprintf(file, "\n");
-        
-        j = 0;
-        for (i = dp_forward.begin(); i != dp_forward.end(); ++i) {
-            if (j == 0) {
-                fprintf(file, "%f", *i);
-                j = 1;
-            } else {
-                fprintf(file, ",%f", *i);
-            }
-        }
+        writeVec(file, dp_forward);
         fprintf(file, "\n");
     
         // power thresholds
@@ -669,8 +509,8 @@ void getFishVel() {
     g_pow1_cl = std_dev_ring(g_data1_ring);
     
     // threshold power
-    //g_pow0_cl = (g_pow0_cl > g_pow0_threshold) ? g_pow0_cl : 0;
-    //g_pow1_cl = (g_pow1_cl > g_pow1_threshold) ? g_pow1_cl : 0;
+    g_pow0_cl = (g_pow0_cl > g_pow0_threshold) ? g_pow0_cl : 0;
+    g_pow1_cl = (g_pow1_cl > g_pow1_threshold) ? g_pow1_cl : 0;
     
     // correct for forward bias and scale to degrees / s
     float dp = g_pow1_cl - g_bias * g_pow0_cl;
