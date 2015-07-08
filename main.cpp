@@ -280,7 +280,7 @@ void recordVelocity() {
 void writeVec(FILE* file, std::vector<float>& x) {
     std::vector<float>::iterator i;
     int j = 0;
-    for (i = g_stim_vel_record.begin(); i != g_stim_vel_record.end(); ++i) {
+    for (i = x.begin(); i != x.end(); ++i) {
         if (j == 0) {
             fprintf(file, "%f", *i);
             j = 1;
