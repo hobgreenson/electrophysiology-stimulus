@@ -72,8 +72,10 @@ float g_scale;
 
 // Closed-loop buffers
 int g_buffer_length = 200; // approx 10 ms worth of samples
-float g_raw_std = 1; // std. dev. of raw data
-float g_raw_mean = 0; // mean of raw data
+float g_raw_std_0 = 1; // std. dev. of raw data0
+float g_raw_mean_0 = 0; // mean of raw data0
+float g_raw_std_1 = 1; // std. dev. of raw data1
+float g_raw_mean_1 = 0; // mean of raw data1
 boost::circular_buffer<float> g_data0_ring(g_buffer_length); // raw data
 boost::circular_buffer<float> g_data1_ring(g_buffer_length); // raw data
 
@@ -260,10 +262,10 @@ void getSerialDataClosedLoop() {
     
     // copy left and right data into ring buffers after scaling
     for (; i0 < ba; i0 += 3) {
-        g_data0_ring.push_back(((float)data[i0] - g_raw_mean) / g_raw_std);
+        g_data0_ring.push_back(((float)data[i0] - g_raw_mean_0) / g_raw_std_0);
     }
     for (; i1 < ba; i1 += 3) {
-        g_data1_ring.push_back(((float)data[i1] - g_raw_mean) / g_raw_std);
+        g_data1_ring.push_back(((float)data[i1] - g_raw_mean_1) / g_raw_std_1);
     }
 }
 
@@ -278,8 +280,8 @@ void recordVelocity() {
 void saveVelocity(char* path) {
     FILE* file = fopen("closed_loop_velocity", "w");
     std::vector<float>::iterator i;
-    int j = 0;
     
+    int j = 0;
     for (i = g_stim_vel_record.begin(); i != g_stim_vel_record.end(); ++i) {
         if (j == 0) {
             fprintf(file, "%f", *i);
@@ -289,8 +291,8 @@ void saveVelocity(char* path) {
         }
     }
     fprintf(file, "\n");
-    j = 0;
     
+    j = 0;
     for (i = g_fish_vel_record.begin(); i != g_fish_vel_record.end(); ++i) {
         if (j == 0) {
             fprintf(file, "%f", *i);
@@ -300,8 +302,8 @@ void saveVelocity(char* path) {
         }
     }
     fprintf(file, "\n");
-    j = 0;
     
+    j = 0;
     for (i = g_total_vel_record.begin(); i != g_total_vel_record.end(); ++i) {
         if (j == 0) {
             fprintf(file, "%f", *i);
@@ -310,9 +312,9 @@ void saveVelocity(char* path) {
             fprintf(file, ",%f", *i);
         }
     }
-    fclose(file);
-    j = 0;
+    fprintf(file, "\n");
     
+    j = 0;
     for (i = g_pow0_cl_record.begin(); i != g_pow0_cl_record.end(); ++i) {
         if (j == 0) {
             fprintf(file, "%f", *i);
@@ -321,9 +323,9 @@ void saveVelocity(char* path) {
             fprintf(file, ",%f", *i);
         }
     }
-    fclose(file);
-    j = 0;
+    fprintf(file, "\n");
     
+    j = 0;
     for (i = g_pow1_cl_record.begin(); i != g_pow1_cl_record.end(); ++i) {
         if (j == 0) {
             fprintf(file, "%f", *i);
@@ -333,7 +335,6 @@ void saveVelocity(char* path) {
         }
     }
     fclose(file);
-    j = 0;
 }
 
 unsigned int mymin(unsigned int a, unsigned int b) {
@@ -394,19 +395,21 @@ float getScale(std::vector<float>& left, std::vector<float>& right) {
 void prepareForClosedLoop(char* path, bool saveit) {
     
     // first scale and de-mean raw data
-    float rightward_m, rightward_s;
-    normalizeVector(g_data0_rightward, rightward_m, rightward_s);
-    normalizeVector(g_data1_rightward, rightward_m, rightward_s);
-    float leftward_m, leftward_s;
-    normalizeVector(g_data0_leftward, leftward_m, leftward_s);
-    normalizeVector(g_data1_leftward, leftward_m, leftward_s);
-    float forward_m, forward_s;
-    normalizeVector(g_data0_forward, forward_m, forward_s);
-    normalizeVector(g_data1_forward, forward_m, forward_s);
+    float rightward_m_0, rightward_s_0, rightward_m_1, rightward_s_1;
+    normalizeVector(g_data0_rightward, rightward_m_0, rightward_s_0);
+    normalizeVector(g_data1_rightward, rightward_m_1, rightward_s_1);
+    float leftward_m_0, leftward_s_0, leftward_m_1, leftward_s_1;
+    normalizeVector(g_data0_leftward, leftward_m_0, leftward_s_0);
+    normalizeVector(g_data1_leftward, leftward_m_1, leftward_s_1);
+    float forward_m_0, forward_s_0, forward_m_1, forward_s_1;
+    normalizeVector(g_data0_forward, forward_m_0, forward_s_0);
+    normalizeVector(g_data1_forward, forward_m_1, forward_s_1);
     
     // set global mean and std for raw data - used in closed loop
-    g_raw_mean = (leftward_m + rightward_m + forward_m) / 3;
-    g_raw_std = (leftward_s + rightward_s + forward_s) / 3;
+    g_raw_mean_0 = (leftward_m_0 + rightward_m_0 + forward_m_0) / 3;
+    g_raw_std_0 = (leftward_s_0 + rightward_s_0 + forward_s_0) / 3;
+    g_raw_mean_1 = (leftward_m_1 + rightward_m_1 + forward_m_1) / 3;
+    g_raw_std_1 = (leftward_s_1 + rightward_s_1 + forward_s_1) / 3;
     
     // now compute power of open-loop raw data
     std::vector<float> pow0_rightward, pow1_rightward,
@@ -666,8 +669,8 @@ void getFishVel() {
     g_pow1_cl = std_dev_ring(g_data1_ring);
     
     // threshold power
-    g_pow0_cl = (g_pow0_cl > g_pow0_threshold) ? g_pow0_cl : 0;
-    g_pow1_cl = (g_pow1_cl > g_pow1_threshold) ? g_pow1_cl : 0;
+    //g_pow0_cl = (g_pow0_cl > g_pow0_threshold) ? g_pow0_cl : 0;
+    //g_pow1_cl = (g_pow1_cl > g_pow1_threshold) ? g_pow1_cl : 0;
     
     // correct for forward bias and scale to degrees / s
     float dp = g_pow1_cl - g_bias * g_pow0_cl;
@@ -1129,7 +1132,9 @@ int main(int argc, char** argv) {
         }
     }
     
+    printf("saving velcoity\n");
     saveVelocity(argv[2]);
+    printf("velocity saved\n");
     
     g_chan.close();
     g_sync_chan.close();
