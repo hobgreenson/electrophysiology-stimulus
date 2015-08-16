@@ -89,8 +89,10 @@ float g_pow1_cl = 0;
 std::vector<float> g_fish_vel_record; // to save
 std::vector<float> g_stim_vel_record; // to save
 std::vector<float> g_total_vel_record; // to save
-std::vector<float> g_pow0_cl_record; // to save
-std::vector<float> g_pow1_cl_record; // to save
+//std::vector<float> g_pow0_cl_record; // to save
+//std::vector<float> g_pow1_cl_record; // to save
+//std::vector<float> g_raw0_cl_record; // to save
+//std::vector<float> g_raw1_cl_record; // to save
 
 // timing and state variables for updating the graphics
 double g_dt = 0;
@@ -102,6 +104,7 @@ int g_curr_mode = -1;
 float g_curr_frequency = -1;
 float g_curr_speed = -1;
 float g_curr_size = -1;
+float g_curr_gain = -1;
 bool g_not_done = true;
 
 /************ GLFW callbacks ************************/
@@ -262,9 +265,11 @@ void getSerialDataClosedLoop() {
     
     // copy left and right data into ring buffers after scaling
     for (; i0 < ba; i0 += 3) {
+        //g_raw0_cl_record.push_back(data[i0]);
         g_data0_ring.push_back(((float)data[i0] - g_raw_mean_0) / g_raw_std_0);
     }
     for (; i1 < ba; i1 += 3) {
+        //g_raw1_cl_record.push_back(data[i1]);
         g_data1_ring.push_back(((float)data[i1] - g_raw_mean_1) / g_raw_std_1);
     }
 }
@@ -273,8 +278,6 @@ void recordVelocity() {
     g_stim_vel_record.push_back(g_stim_vel);
     g_fish_vel_record.push_back(g_fish_vel);
     g_total_vel_record.push_back(g_total_vel);
-    g_pow0_cl_record.push_back(g_pow0_cl);
-    g_pow1_cl_record.push_back(g_pow1_cl);
 }
 
 void writeVec(FILE* file, std::vector<float>& x) {
@@ -290,23 +293,30 @@ void writeVec(FILE* file, std::vector<float>& x) {
     }
 }
 
-void saveVelocity(char* path) {
-    FILE* file = fopen("closed_loop_velocity", "w");
-    std::vector<float>::iterator i;
+void saveVelocity(char* fileid) {
+    char path[100];
+    strcpy(path, fileid);
+    strcat(path, "_closed_loop_velocity.txt");
+    FILE* file = fopen(path, "w");
     
     writeVec(file, g_stim_vel_record);
     fprintf(file, "\n");
-    
     writeVec(file, g_fish_vel_record);
     fprintf(file, "\n");
-    
     writeVec(file, g_total_vel_record);
-    fprintf(file, "\n");
+    //fprintf(file, "\n");
     
-    writeVec(file, g_pow0_cl_record);
-    fprintf(file, "\n");
+    //writeVec(file, g_pow0_cl_record);
+    //fprintf(file, "\n");
+    //writeVec(file, g_pow1_cl_record);
+    //fprintf(file, "\n");
     
-    writeVec(file, g_pow1_cl_record);
+    //writeVec(file, g_raw0_cl_record);
+    //fprintf(file, "\n");
+    //writeVec(file, g_raw1_cl_record);
+    //fprintf(file, "\n");
+    
+    //fprintf(file, "%f,%f,%f,%f", g_raw_mean_0, g_raw_std_0, g_raw_mean_1, g_raw_std_1);
     fclose(file);
 }
 
@@ -365,16 +375,21 @@ float getScale(std::vector<float>& left, std::vector<float>& right) {
     return 40 * (time_swimming_l + time_swimming_r) / (fabs(sl) + fabs(sr));
 }
 
-void prepareForClosedLoop(char* path, bool saveit) {
+void prepareForClosedLoop(char* fileid, bool saveit) {
     
     // first scale and de-mean raw data
-    float rightward_m_0, rightward_s_0, rightward_m_1, rightward_s_1;
+    float rightward_m_0, rightward_s_0,
+          rightward_m_1, rightward_s_1;
     normalizeVector(g_data0_rightward, rightward_m_0, rightward_s_0);
     normalizeVector(g_data1_rightward, rightward_m_1, rightward_s_1);
-    float leftward_m_0, leftward_s_0, leftward_m_1, leftward_s_1;
+    
+    float leftward_m_0, leftward_s_0,
+          leftward_m_1, leftward_s_1;
     normalizeVector(g_data0_leftward, leftward_m_0, leftward_s_0);
     normalizeVector(g_data1_leftward, leftward_m_1, leftward_s_1);
-    float forward_m_0, forward_s_0, forward_m_1, forward_s_1;
+    
+    float forward_m_0, forward_s_0,
+          forward_m_1, forward_s_1;
     normalizeVector(g_data0_forward, forward_m_0, forward_s_0);
     normalizeVector(g_data1_forward, forward_m_1, forward_s_1);
     
@@ -428,7 +443,7 @@ void prepareForClosedLoop(char* path, bool saveit) {
     float mp1 = mean_vec(pow1_forward);
     g_bias = mp1 / mp0;
     
-    // get power difference
+    // get power difference with bias correction
     unsigned int i, n;
     std::vector<float> dp_rightward;
     n = mymin(pow0_rightward.size(), pow1_rightward.size());
@@ -451,8 +466,10 @@ void prepareForClosedLoop(char* path, bool saveit) {
     
     // save data if desired
     if (saveit) {
-
-        FILE* file = fopen("calibration_data", "w");
+        char path[100];
+        strcpy(path, fileid);
+        strcat(path, "_calibration_data.txt");
+        FILE* file = fopen(path, "w");
         
         // raw data
         writeVec(file, g_data0_rightward);
@@ -507,6 +524,10 @@ void getFishVel() {
     // compute power of ring buffers
     g_pow0_cl = std_dev_ring(g_data0_ring);
     g_pow1_cl = std_dev_ring(g_data1_ring);
+    
+    // debug
+    //g_pow0_cl_record.push_back(g_pow0_cl);
+    //g_pow1_cl_record.push_back(g_pow1_cl);
     
     // threshold power
     g_pow0_cl = (g_pow0_cl > g_pow0_threshold) ? g_pow0_cl : 0;
@@ -703,7 +724,7 @@ void updateClosedLoopStepOMR() {
         getFishVel();
         
         g_stim_vel = coeff * g_curr_speed;
-        g_total_vel = g_stim_vel - g_fish_vel;
+        g_total_vel = g_stim_vel - (g_curr_gain * g_fish_vel);
         
         recordVelocity();
         
@@ -733,7 +754,9 @@ void updateClosedLoopStepOMR() {
     } else {
         
         g_curr_speed = g_protocol.nextSpeed();
+        g_curr_gain = g_protocol.nextGain();
         g_curr_mode = g_protocol.nextMode();
+        recordVelocity();
         
         if (g_curr_speed < 0 || g_curr_mode < 0) {
             // end of protocol
@@ -791,7 +814,7 @@ void updateCalibrationStepOMR() {
     }
 }
 
-void setupExperiment(int type, char* path) {
+void setupExperiment(int type, char* fileid) {
     switch (type) {
         case OPEN_LOOP_OMR:
         {
@@ -807,6 +830,9 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
+            char path[100];
+            strcpy(path, fileid);
+            strcat(path, "_openloop.txt");
             g_protocol.createOpenLoopStepOMR(true, path);
             
             g_curr_speed = g_protocol.nextSpeed();
@@ -832,6 +858,9 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_prey);
             initMeshShaders(&g_prey);
             
+            char path[100];
+            strcpy(path, fileid);
+            strcat(path, "_openloop.txt");
             g_protocol.createOpenLoopPrey(true, path);
             
             g_curr_speed = g_protocol.nextSpeed();
@@ -858,9 +887,16 @@ void setupExperiment(int type, char* path) {
             bufferMesh(&g_linear);
             initMeshShaders(&g_linear);
             
-            g_calibration_protocol.createOpenLoopStepOMR(true, path);
             
-            g_protocol.createClosedLoopStepOMR(false, path);
+            char path1[100];
+            strcpy(path1, fileid);
+            strcat(path1, "_openloop.txt");
+            g_calibration_protocol.createOpenLoopStepOMR(true, path1);
+            
+            char path2[100];
+            strcpy(path2, fileid);
+            strcat(path2, "_closedloop.txt");
+            g_protocol.createClosedLoopStepOMR(true, path2);
             
             g_curr_speed = g_calibration_protocol.nextSpeed();
             g_curr_mode = g_calibration_protocol.nextMode();
@@ -875,9 +911,11 @@ void setupExperiment(int type, char* path) {
             break;
             
         default:
+        {
             printf("Unrecognized experiment type!\n");
             exit(EXIT_FAILURE);
             break;
+        }
     }
 }
 
@@ -943,6 +981,7 @@ int main(int argc, char** argv) {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+    
     printf("done with open-loop\n");
     
     // second game loop in closed-loop
@@ -950,6 +989,7 @@ int main(int argc, char** argv) {
         
         // set up closed-loop
         prepareForClosedLoop(argv[2], true);
+        g_chan.flush();
         g_not_done = true;
         g_total_elasped = 0;
         g_updateFunc = &updateClosedLoopStepOMR;
@@ -972,9 +1012,9 @@ int main(int argc, char** argv) {
         }
     }
     
-    printf("saving velcoity\n");
+    printf("saving velocity...\n");
     saveVelocity(argv[2]);
-    printf("velocity saved\n");
+    printf("we're done here!\n");
     
     g_chan.close();
     g_sync_chan.close();

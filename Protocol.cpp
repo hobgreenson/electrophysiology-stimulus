@@ -1,35 +1,33 @@
 #include "Protocol.h"
 
 Protocol::Protocol()
-    : size_index_(0), speed_index_(0), mode_index_(0)
+    : size_index_(0), speed_index_(0), mode_index_(0), gain_index_(0)
 {
     srand(time(NULL));
 }
 
-Protocol::~Protocol()
-{
-    free(frequency_array_);
+Protocol::~Protocol() {
     free(size_array_);
     free(speed_array_);
     free(mode_array_);
+    free(gain_array_);
 }
 
 void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
-    
-    const int n_speeds = 5, n_modes = 3, n_reps = 3;
-    float speed_set[n_speeds] = {2, 5, 10, 20, 40};
+    const int n_speeds = 1, n_modes = 3, n_reps = 5;
+    float speed_set[n_speeds] = {10.0};
     int mode_set[n_modes] = {0, 1, 2};
-    
     length_ = n_modes * n_speeds * n_reps;
-    frequency_array_ = (float*) malloc(length_ * sizeof(int));
+    
     mode_array_ = (int*) malloc(length_ * sizeof(int));
     speed_array_ = (float*) malloc(length_ * sizeof(float));
     size_array_ = (int*) malloc(length_ * sizeof(int));
+    gain_array_ = (float*) malloc(length_ * sizeof(float));
     
     int arr_i = 0;
-    for(int i = 0; i < n_speeds; i++) {
-        for(int j = 0; j < n_modes; j++) {
-            for(int k = 0; k < n_reps; k++) {
+    for (int i = 0; i < n_speeds; i++) {
+        for (int j = 0; j < n_modes; j++) {
+            for (int k = 0; k < n_reps; k++) {
                 mode_array_[arr_i + k] = mode_set[j];
                 speed_array_[arr_i + k] = speed_set[i];
             }
@@ -54,33 +52,34 @@ void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
 }
 
 void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
-    float speed_set[4] = {4, 10, 40, 80};
-    int mode_set[2] = {0, 1};
-    length_ = 2 * 4 * 5;
+    const int n_speeds = 1, n_modes = 2, n_reps = 5, n_gains = 4;
+    float speed_set[n_speeds] = {10.0};
+    int mode_set[n_modes] = {0, 1};
+    float gain_set[n_gains] = {-2.0, -1.0, 1.0, 2.0};
     
-    frequency_array_ = (float*) malloc(length_ * sizeof(int));
+    length_ = n_modes * n_speeds * n_reps * n_gains;
     mode_array_ = (int*) malloc(length_ * sizeof(int));
     speed_array_ = (float*) malloc(length_ * sizeof(float));
     size_array_ = (int*) malloc(length_ * sizeof(int));
+    gain_array_ = (float*) malloc(length_ * sizeof(float));
+    
+    for (int i = 0; i < length_; ++i) {
+        speed_array_[i] = speed_set[0];
+    }
     
     int arr_i = 0;
-    for(int i = 0; i < 4; i++)
-    {
-        int speed = speed_set[i];
-        for(int j = 0; j < 2; j++)
-        {
-            int mode = mode_set[j];
-            for(int k = 0; k < 5; k++)
-            {
-                mode_array_[arr_i + k] = mode;
-                speed_array_[arr_i + k] = speed;
+    for (int i = 0; i < n_gains; i++) {
+        for (int j = 0; j < n_modes; j++) {
+            for (int k = 0; k < n_reps; k++) {
+                mode_array_[arr_i + k] = mode_set[j];
+                gain_array_[arr_i + k] = gain_set[i];
             }
-            arr_i += 5;
+            arr_i += n_reps;
         }
     }
     
     shuffle(mode_array_);
-    shuffle(speed_array_);
+    shuffle(gain_array_);
     
     if (saveit) {
         FILE* file = fopen(path, "w");
@@ -91,33 +90,9 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
         for (int i = 0; i < length_; ++i) {
             fprintf(file, "%f ", speed_array_[i]);
         }
-        fclose(file);
-    }
-}
-
-void Protocol::createSineClosedLoopOMR(bool saveit, char* path) {
-    float frequency_set[5] = {0.1, 0.2, 0.5, 1.0, 2.0};
-    int reps = 10;
-    length_ = 5 * reps;
-    frequency_array_ = (float*) malloc(length_ * sizeof(float));
-    mode_array_ = (int*) malloc(length_ * sizeof(int));
-    speed_array_ = (float*) malloc(length_ * sizeof(float));
-    size_array_ = (int*) malloc(length_ * sizeof(int));
-    
-    int arr_i = 0;
-    for(int i = 0; i < 5; i++) {
-        for(int k = 0; k < reps; k++) {
-            frequency_array_[arr_i + k] = frequency_set[i];
-        }
-        arr_i += reps;
-    }
-
-    shuffle(frequency_array_);
-    
-    if (saveit) {
-        FILE* file = fopen(path, "w");
+        fprintf(file, "\n");
         for (int i = 0; i < length_; ++i) {
-            fprintf(file, "%f ", frequency_array_[i]);
+            fprintf(file, "%f ", gain_array_[i]);
         }
         fclose(file);
     }
@@ -127,10 +102,11 @@ void Protocol::createOpenLoopPrey(bool saveit, char* path) {
     float speed_set[5] = {30, 60, 90, 120, 150};
     int size_set[6] = {1, 3, 5, 7, 20, 30};
     length_ = 150; // 5x reps for each speed-size combo
-    frequency_array_ = (float*) malloc(length_ * sizeof(int));
+    
     size_array_ = (int*) malloc(length_ * sizeof(int));
     speed_array_ = (float*) malloc(length_ * sizeof(float));
     mode_array_ = (int*) malloc(length_ * sizeof(int));
+    gain_array_ = (float*) malloc(length_ * sizeof(float));
     
     int arr_i = 0;
     for(int i = 0; i < 5; i++)
@@ -165,15 +141,22 @@ void Protocol::createOpenLoopPrey(bool saveit, char* path) {
 }
 
 void Protocol::reset() {
-    frequency_index_ = 0;
     size_index_ = 0;
     speed_index_ = 0;
     mode_index_ = 0;
 }
 
-float Protocol::nextFrequency() {
-    float freq = (frequency_index_ < length_) ? frequency_array_[frequency_index_++] : -1;
-    return freq;
+float Protocol::sizeToGL(int size) {
+    return SCREEN_WIDTH_GL * ((float)size / SCREEN_WIDTH_DEG);
+}
+
+float Protocol::speedToGL(int speed) {
+    return SCREEN_WIDTH_GL * ((float)speed / SCREEN_WIDTH_DEG);
+}
+
+float Protocol::nextGain() {
+    float gain = (gain_index_ < length_) ? gain_array_[gain_index_++] : -1;
+    return gain;
 }
 
 float Protocol::nextSize() {
@@ -181,17 +164,9 @@ float Protocol::nextSize() {
     return sizeToGL(size);
 }
 
-float Protocol::sizeToGL(int size) {
-    return SCREEN_WIDTH_GL * ((float)size / SCREEN_WIDTH_DEG);
-}
-
 float Protocol::nextSpeed() {
     float speed = (speed_index_ < length_) ? speed_array_[speed_index_++] : -1;
     return speed;
-}
-
-float Protocol::speedToGL(int speed) {
-    return SCREEN_WIDTH_GL * ((float)speed / SCREEN_WIDTH_DEG);
 }
 
 int Protocol::nextMode() {
