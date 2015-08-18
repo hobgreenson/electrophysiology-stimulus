@@ -50,10 +50,6 @@ public:
     void makeVerticesCircle(float radius, float cx, float cy);
     void makeIndicesCircle();
     
-    void horzGrating(int periods, GLubyte clevel);
-    void makeHorzGratingVertices(int periods, GLubyte clevel);
-    void makeHorzGratingIndices(int periods);
-    
     void rotatingGrating(int periods);
     void makeRotatingGratingVertices(int periods);
     void makeRotatingGratingIndices(int periods);
@@ -64,9 +60,6 @@ public:
     
     // simple functions to modify color, position, shape of mesh
     void color(float R, float G, float B, float A);
-    void randColor(float A);
-    void randGrayScaleColor(float A);
-    void randBlueScaleColor(float A);
     void translateX(double dx);
     void translateXmod(double dx, double n);
     void translateY(double dy);
@@ -77,7 +70,6 @@ public:
     void scaleY(double da);
     void scaleXY(double da);
     void resetScale();
-    void rotateZ(double dtheta);
     
 };
     
