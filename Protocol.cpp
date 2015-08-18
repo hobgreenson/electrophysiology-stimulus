@@ -13,7 +13,7 @@ Protocol::~Protocol() {
 }
 
 void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
-    const int n_speeds = 2, n_modes = 3, n_reps = 3;
+    const int n_speeds = 2, n_modes = 3, n_reps = 10;
     float speed_set[n_speeds] = {2.0, 10.0};
     int mode_set[n_modes] = {0, 1, 2};
     length_ = n_modes * n_speeds * n_reps;
