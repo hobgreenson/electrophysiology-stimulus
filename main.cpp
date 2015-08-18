@@ -994,6 +994,7 @@ int main(int argc, char** argv) {
         g_total_elasped = 0;
         g_updateFunc = &updateClosedLoopStepOMR;
         g_drawFunc = &drawClosedLoopOMR;
+        g_trial_duration = 30;
         
         while (g_not_done && !glfwWindowShouldClose(window)) {
             // game loop
