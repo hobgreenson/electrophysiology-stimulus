@@ -1,8 +1,7 @@
 #include "Protocol.h"
 
 Protocol::Protocol()
-    : size_index_(0), speed_index_(0), mode_index_(0), gain_index_(0)
-{
+    : size_index_(0), speed_index_(0), mode_index_(0), gain_index_(0) {
     srand(time(NULL));
 }
 
@@ -14,7 +13,7 @@ Protocol::~Protocol() {
 }
 
 void Protocol::createOpenLoopStepOMR(bool saveit, char* path) {
-    const int n_speeds = 1, n_modes = 3, n_reps = 5;
+    const int n_speeds = 1, n_modes = 3, n_reps = 20;
     float speed_set[n_speeds] = {10.0};
     int mode_set[n_modes] = {0, 1, 2};
     length_ = n_modes * n_speeds * n_reps;
@@ -55,7 +54,7 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
     const int n_speeds = 1, n_modes = 2, n_reps = 5, n_gains = 4;
     float speed_set[n_speeds] = {10.0};
     int mode_set[n_modes] = {0, 1};
-    float gain_set[n_gains] = {-2.0, -1.0, 1.0, 2.0};
+    float gain_set[n_gains] = {2.0, 1.0, -1.0, -2.0};
     
     length_ = n_modes * n_speeds * n_reps * n_gains;
     mode_array_ = (int*) malloc(length_ * sizeof(int));
@@ -79,7 +78,6 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
     }
     
     shuffle(mode_array_);
-    shuffle(gain_array_);
     
     if (saveit) {
         FILE* file = fopen(path, "w");
@@ -99,9 +97,10 @@ void Protocol::createClosedLoopStepOMR(bool saveit, char* path) {
 }
 
 void Protocol::createOpenLoopPrey(bool saveit, char* path) {
-    float speed_set[5] = {30, 60, 90, 120, 150};
-    int size_set[6] = {1, 3, 5, 7, 20, 30};
-    length_ = 150; // 5x reps for each speed-size combo
+    const int n_speeds = 5, n_sizes = 6, n_reps = 5;
+    float speed_set[n_speeds] = {30, 60, 90, 120, 150};
+    int size_set[n_sizes] = {1, 3, 5, 7, 20, 30};
+    length_ = n_speeds * n_sizes * n_reps; // 5x reps for each speed-size combo
     
     size_array_ = (int*) malloc(length_ * sizeof(int));
     speed_array_ = (float*) malloc(length_ * sizeof(float));
@@ -109,18 +108,13 @@ void Protocol::createOpenLoopPrey(bool saveit, char* path) {
     gain_array_ = (float*) malloc(length_ * sizeof(float));
     
     int arr_i = 0;
-    for(int i = 0; i < 5; i++)
-    {
-        float speed = speed_set[i];
-        for(int j = 0; j < 6; j++)
-        {
-            int size = size_set[j];
-            for(int k = 0; k < 5; k++)
-            {
-                size_array_[arr_i + k] = size;
-                speed_array_[arr_i + k] = speed;
+    for(int i = 0; i < n_speeds; i++) {
+        for(int j = 0; j < n_sizes; j++) {
+            for(int k = 0; k < n_reps; k++) {
+                size_array_[arr_i + k] = size_set[j];
+                speed_array_[arr_i + k] = speed_set[i];
             }
-            arr_i += 5;
+            arr_i += n_reps;
         }
     }
     
@@ -144,6 +138,7 @@ void Protocol::reset() {
     size_index_ = 0;
     speed_index_ = 0;
     mode_index_ = 0;
+    gain_index_ = 0;
 }
 
 float Protocol::sizeToGL(int size) {

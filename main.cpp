@@ -990,10 +990,15 @@ int main(int argc, char** argv) {
         // set up closed-loop
         prepareForClosedLoop(argv[2], true);
         g_chan.flush();
+        if (g_serial_up) {
+            g_sync_chan.write(&g_msg, 1);
+            g_serial_up = false;
+        }
         g_not_done = true;
         g_total_elasped = 0;
         g_updateFunc = &updateClosedLoopStepOMR;
         g_drawFunc = &drawClosedLoopOMR;
+        g_trial_duration = 30;
         
         while (g_not_done && !glfwWindowShouldClose(window)) {
             // game loop
